@@ -11,7 +11,7 @@ const writeRateLimiter = rateLimit(rateLimitPresets.api);
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const rateLimitResponse = await writeRateLimiter(request);
   if (rateLimitResponse) {
@@ -24,7 +24,7 @@ export async function DELETE(
   }
 
   try {
-    const locationId = params.id;
+    const { id: locationId } = await params;
     await AdminService.deleteLocation(locationId);
 
     return NextResponse.json({
