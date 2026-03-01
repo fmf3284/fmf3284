@@ -12,7 +12,7 @@ const writeRateLimiter = rateLimit(rateLimitPresets.api);
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const rateLimitResponse = await writeRateLimiter(request);
   if (rateLimitResponse) {
@@ -28,7 +28,7 @@ export async function POST(
       );
     }
 
-    const locationId = params.id;
+    const { id: locationId } = await params;
 
     // Check if already checked in today
     const hasCheckedIn = await CheckInsService.hasCheckedInToday(user.id, locationId);
@@ -69,7 +69,7 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const rateLimitResponse = await readRateLimiter(request);
   if (rateLimitResponse) {
@@ -77,7 +77,7 @@ export async function GET(
   }
 
   try {
-    const locationId = params.id;
+    const { id: locationId } = await params;
     const checkIns = await CheckInsService.getLocationCheckIns(locationId);
     const count = await CheckInsService.getLocationCheckInCount(locationId);
 

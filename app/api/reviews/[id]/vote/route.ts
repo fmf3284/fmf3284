@@ -12,7 +12,7 @@ const writeRateLimiter = rateLimit(rateLimitPresets.api);
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // Apply rate limiting
   const rateLimitResponse = await writeRateLimiter(request);
@@ -31,7 +31,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const reviewId = params.id;
+    const { id: reviewId } = await params;
 
     // Validate input
     const validated = voteReviewSchema.parse({
@@ -80,7 +80,7 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
@@ -91,7 +91,7 @@ export async function GET(
       );
     }
 
-    const reviewId = params.id;
+    const { id: reviewId } = await params;
     const vote = await ReviewVotesService.getUserVote(user.id, reviewId);
 
     return NextResponse.json({

@@ -13,7 +13,7 @@ const writeRateLimiter = rateLimit(rateLimitPresets.api);
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const rateLimitResponse = await readRateLimiter(request);
   if (rateLimitResponse) {
@@ -21,7 +21,7 @@ export async function GET(
   }
 
   try {
-    const locationId = params.id;
+    const { id: locationId } = await params;
     const hours = await BusinessHoursService.getBusinessHours(locationId);
     const formatted = BusinessHoursService.formatBusinessHours(hours);
     const isOpenNow = await BusinessHoursService.isOpenNow(locationId);
@@ -52,7 +52,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const rateLimitResponse = await writeRateLimiter(request);
   if (rateLimitResponse) {
@@ -68,7 +68,7 @@ export async function POST(
       );
     }
 
-    const locationId = params.id;
+    const { id: locationId } = await params;
     const body = await request.json();
 
     const validated = setBusinessHoursSchema.parse({
