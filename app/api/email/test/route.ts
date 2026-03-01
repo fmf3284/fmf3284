@@ -37,7 +37,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await EmailService.testEmail(to);
+    const result = await EmailService.sendEmail({
+      to,
+      subject: 'Test Email from Find My Fitness',
+      text: 'This is a test email to verify your email configuration is working correctly.',
+      html: '<p>This is a test email to verify your email configuration is working correctly.</p>',
+    });
 
     if (result.success) {
       return NextResponse.json({
