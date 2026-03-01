@@ -54,9 +54,9 @@ export class EmailService {
         from: `${this.fromName} <${this.fromEmail}>`,
         to: Array.isArray(options.to) ? options.to : [options.to],
         subject: options.subject,
-        text: options.text,
-        html: options.html,
-        replyTo: options.replyTo,
+        html: options.html ?? options.text ?? '',
+        ...(options.text !== undefined && { text: options.text }),
+        ...(options.replyTo !== undefined && { reply_to: options.replyTo }),
       });
 
       if (error) {

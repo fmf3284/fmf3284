@@ -289,13 +289,15 @@ export class AdminService {
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
         : 0;
 
-      await tx.location.update({
-        where: { id: review.locationId },
-        data: {
-          rating: avgRating,
-          reviewCount: reviews.length,
-        },
-      });
+      if (review.locationId) {
+        await tx.location.update({
+          where: { id: review.locationId },
+          data: {
+            rating: avgRating,
+            reviewCount: reviews.length,
+          },
+        });
+      }
 
       return review;
     });
@@ -345,7 +347,7 @@ export class AdminService {
         type: 'review',
         id: r.id,
         createdAt: r.createdAt,
-        description: `${r.user.name || r.user.email} reviewed ${r.location.name}`,
+        description: `${r.user.name || r.user.email} reviewed ${r.location?.name ?? 'a location'}`,
         data: r,
       })),
       ...recentCheckIns.map(c => ({

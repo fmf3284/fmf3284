@@ -16,12 +16,6 @@ const mockMarkers: MapMarker[] = [
   { id: '3', name: 'PowerFit Training', lat: 40.7489, lng: -73.9680, type: 'Personal Training' },
 ];
 
-// Extend Window interface for Google Maps
-declare global {
-  interface Window {
-    google?: typeof google;
-  }
-}
 
 /**
  * MapSection Component

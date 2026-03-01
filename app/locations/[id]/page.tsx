@@ -4,11 +4,6 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-declare global {
-  interface Window {
-    google: typeof google;
-  }
-}
 
 interface PlaceDetails {
   name: string;

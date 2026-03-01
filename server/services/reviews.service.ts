@@ -78,13 +78,8 @@ export class ReviewsService {
 
     return await prisma.$transaction(async (tx) => {
       // Check if user already reviewed this location
-      const existingReview = await tx.review.findUnique({
-        where: {
-          userId_locationId: {
-            userId,
-            locationId,
-          },
-        },
+      const existingReview = await tx.review.findFirst({
+        where: { userId, locationId },
       });
 
       if (existingReview) {
@@ -126,7 +121,7 @@ export class ReviewsService {
       await tx.location.update({
         where: { id: locationId },
         data: {
-          rating: aggregates._avg.rating || 0,
+          rating: aggregates._avg.rating ?? 0,
           reviewCount: aggregates._count.id || 0,
         },
       });
@@ -187,13 +182,15 @@ export class ReviewsService {
       });
 
       // Update location with new aggregates
-      await tx.location.update({
-        where: { id: existingReview.locationId },
-        data: {
-          rating: aggregates._avg.rating || 0,
-          reviewCount: aggregates._count.id || 0,
-        },
-      });
+      if (existingReview.locationId) {
+        await tx.location.update({
+          where: { id: existingReview.locationId },
+          data: {
+            rating: aggregates._avg.rating ?? 0,
+            reviewCount: aggregates._count.id || 0,
+          },
+        });
+      }
 
       return review;
     });
@@ -235,13 +232,15 @@ export class ReviewsService {
       });
 
       // Update location with new aggregates
-      await tx.location.update({
-        where: { id: existingReview.locationId },
-        data: {
-          rating: aggregates._avg.rating || 0,
-          reviewCount: aggregates._count.id || 0,
-        },
-      });
+      if (existingReview.locationId) {
+        await tx.location.update({
+          where: { id: existingReview.locationId },
+          data: {
+            rating: aggregates._avg.rating ?? 0,
+            reviewCount: aggregates._count.id || 0,
+          },
+        });
+      }
     });
   }
 
@@ -293,13 +292,8 @@ export class ReviewsService {
    * Check if user has reviewed a location
    */
   static async hasUserReviewed(userId: string, locationId: string): Promise<boolean> {
-    const review = await prisma.review.findUnique({
-      where: {
-        userId_locationId: {
-          userId,
-          locationId,
-        },
-      },
+    const review = await prisma.review.findFirst({
+      where: { userId, locationId },
     });
     return !!review;
   }
