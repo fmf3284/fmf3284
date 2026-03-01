@@ -19,10 +19,13 @@ export class PaymentService {
    * Create checkout session - placeholder
    */
   static async createCheckoutSession(options: {
-    priceId: string;
-    userId: string;
+    mode: 'payment' | 'subscription';
+    priceId?: string;
+    amount?: number;
+    currency?: string;
     successUrl: string;
     cancelUrl: string;
+    metadata?: Record<string, string>;
   }): Promise<PaymentResult> {
     if (!this.isConfigured) {
       return { 
