@@ -42,20 +42,15 @@ export async function POST(request: NextRequest) {
 
     // Send notification email to admin
     try {
-      await EmailService.send({
-        to: 'support@findmyfitness.fit',
-        subject: `🤝 New Affiliate Application: ${name}`,
-        html: `
-          <h2>New Affiliate Application</h2>
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
-          <p><strong>Business:</strong> ${businessName || 'Not provided'}</p>
-          <p><strong>Website:</strong> ${website || 'Not provided'}</p>
-          <p><strong>Social Media:</strong> ${socialMedia || 'Not provided'}</p>
-          <p><strong>Audience Size:</strong> ${audienceSize || 'Not provided'}</p>
-          <p><strong>Message:</strong> ${message || 'None'}</p>
-        `,
+      await EmailService.sendAffiliateNotification({
+        name,
+        email,
+        phone,
+        businessName,
+        website,
+        socialMedia,
+        audienceSize,
+        message,
       });
     } catch (e) {
       console.error('Failed to send notification email:', e);
