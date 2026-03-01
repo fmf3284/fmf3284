@@ -1,0 +1,352 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  password      String?
+  phone         String?
+  role          String   @default("user") // "user", "admin", "business_owner", "super_admin"
+  status        String   @default("pending") // "active", "suspended", "pending"
+  
+  // Email verification
+  emailVerified Boolean  @default(false)
+  verificationToken String?
+  verificationExpires DateTime?
+  
+  // Soft delete - data retained for 90 days
+  deletedAt     DateTime?  // When set, user is "deleted" but data retained
+  deletedBy     String?    // Admin who deleted the user
+  
+  // Session tracking
+  lastLoginAt   DateTime?
+  lastActiveAt  DateTime?
+  loginCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Extended profile fields
+  age           Int?
+  streetAddress String?
+  city          String?
+  state         String?
+  zipCode       String?
+  favoriteActivities String?  // JSON array as string: ["Gym", "Yoga", "Running"]
+  experienceLevel    String?  // "Beginner", "Intermediate", "Advanced"
+  fitnessGoals       String?
+
+  bookmarks     Bookmark[]
+  reviews       Review[]
+  activityLogs  ActivityLog[]
+
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // "login", "logout", "search", "view_location", "write_review"
+  details   String?  // JSON string with additional info (search query, location name, etc.)
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model Location {
+  id          String   @id // Stable string ID for frontend compatibility (e.g., "1", "2")
+  name        String
+  category    String
+  address     String
+  city        String
+  state       String
+  zipCode     String?
+  phone       String?
+  website     String?
+  email       String?
+  description String?
+  image       String?
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  priceRange  String?
+  distance    String?
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  amenities LocationAmenity[]
+  bookmarks Bookmark[]
+  reviews   Review[]
+
+  @@index([category])
+  @@index([city, state])
+  @@index([rating])
+  @@map("locations")
+}
+
+model Amenity {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations LocationAmenity[]
+
+  @@map("amenities")
+}
+
+model LocationAmenity {
+  id         String   @id @default(cuid())
+  locationId String
+  amenityId  String
+  createdAt  DateTime @default(now())
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  amenity  Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, amenityId])
+  @@index([locationId])
+  @@index([amenityId])
+  @@map("location_amenities")
+}
+
+model Bookmark {
+  id         String   @id @default(cuid())
+  userId     String
+  locationId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, locationId])
+  @@index([userId])
+  @@index([locationId])
+  @@map("bookmarks")
+}
+
+model Review {
+  id              String   @id @default(cuid())
+  userId          String
+  locationId      String?  // For internal locations (optional)
+  placeId         String?  // For Google Places (optional)
+  placeName       String?  // Store place name for display
+  rating          Float
+  text            String?  // Review text
+  comment         String?  // Legacy field (deprecated, use text)
+  userName        String?  // Denormalized for easy display
+  isAnonymous     Boolean  @default(false) // Hide user name
+  status          String   @default("pending") // pending, approved, rejected
+  photos          String[] // Array of photo URLs
+  helpfulCount    Int      @default(0) // Count of helpful votes
+  notHelpfulCount Int      @default(0) // Count of not helpful votes
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location      Location?      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  helpfulVotes  ReviewVote[]
+  responses     ReviewResponse[]
+
+  @@unique([userId, placeId])
+  @@index([locationId])
+  @@index([placeId])
+  @@index([userId])
+  @@map("reviews")
+}
+
+model ReviewVote {
+  id         String   @id @default(cuid())
+  reviewId   String
+  userId     String
+  isHelpful  Boolean // true = helpful, false = not helpful
+  createdAt  DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId])
+  @@index([reviewId])
+  @@index([userId])
+  @@map("review_votes")
+}
+
+model ReviewResponse {
+  id         String   @id @default(cuid())
+  reviewId   String
+  userId     String   // Business owner or admin
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_responses")
+}
+
+model BusinessHours {
+  id         String   @id @default(cuid())
+  locationId String
+  dayOfWeek  Int // 0 = Sunday, 6 = Saturday
+  openTime   String // Format: "09:00"
+  closeTime  String // Format: "21:00"
+  isClosed   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([locationId, dayOfWeek])
+  @@index([locationId])
+  @@map("business_hours")
+}
+
+model CheckIn {
+  id         String   @id @default(cuid())
+  userId     String
+  locationId String
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([locationId])
+  @@index([createdAt])
+  @@map("check_ins")
+}
+
+model UserProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  bio             String?
+  avatar          String?
+  city            String?
+  state           String?
+  reviewCount     Int      @default(0)
+  checkInCount    Int      @default(0)
+  friendCount     Int      @default(0)
+  eliteYear       Int? // Year user became elite (Yelp-like)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@map("user_profiles")
+}
+
+model EmailLog {
+  id          String   @id @default(cuid())
+  to          String   // Recipient email
+  subject     String
+  type        String   // "verification", "welcome", "password_reset", "admin_notification"
+  status      String   // "sent", "failed", "pending"
+  provider    String   // "resend", "sendgrid", "smtp", "console"
+  messageId   String?  // Provider's message ID
+  error       String?  // Error message if failed
+  metadata    String?  // JSON string with additional data
+  createdAt   DateTime @default(now())
+
+  @@index([to])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  discount    String   // "50% OFF", "$99", "FREE"
+  category    String   // "Gym", "Yoga", "Pilates", etc.
+  locationId  String?  // Optional link to a Location
+  locationName String? // Or just store the name
+  image       String?  // Emoji or image URL
+  validFrom   DateTime @default(now())
+  validUntil  DateTime
+  isFeatured  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  claimCount  Int      @default(0)
+  createdBy   String?  // Admin who created
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@index([isFeatured])
+  @@index([validUntil])
+  @@map("deals")
+}
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String?  // Short description
+  content     String   // Full content (markdown or HTML)
+  coverImage  String?  // Image URL
+  category    String?  // "Fitness Tips", "Nutrition", "Success Stories"
+  tags        String?  // JSON array as string
+  authorId    String?
+  authorName  String?
+  isPublished Boolean  @default(false)
+  publishedAt DateTime?
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isPublished])
+  @@index([category])
+  @@map("blog_posts")
+}
+
+model AffiliateApplication {
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  phone          String?
+  businessName   String?
+  website        String?
+  socialMedia    String?  // Instagram, TikTok, etc.
+  audienceSize   String?  // "1-1000", "1000-10000", etc.
+  message        String?  // Why they want to join
+  status         String   @default("pending") // "pending", "approved", "rejected"
+  reviewedBy     String?  // Admin who reviewed
+  reviewedAt     DateTime?
+  notes          String?  // Admin notes
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@map("affiliate_applications")
+}
+
+model MembershipPlan {
+  id          String   @id @default(cuid())
+  name        String   // "Basic", "Pro", "Premium"
+  description String?
+  price       Float    // Monthly price
+  interval    String   @default("month") // "month", "year"
+  features    String?  // JSON array of features
+  isPopular   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("membership_plans")
+}
