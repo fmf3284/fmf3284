@@ -12,11 +12,35 @@ export default function ContactPage() {
     category: '' as MessageCategory,
     message: '',
   });
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [statusMessage, setStatusMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Contact form submitted:', formData);
-    alert('Thank you for contacting us! We will get back to you within 24-48 hours.');
+    setStatus('loading');
+    setStatusMessage('');
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setStatus('success');
+        setStatusMessage(data.message);
+        setFormData({ full_name: '', email: '', phone: '', category: '', message: '' });
+      } else {
+        setStatus('error');
+        setStatusMessage(data.error || 'Something went wrong. Please try again.');
+      }
+    } catch {
+      setStatus('error');
+      setStatusMessage('Network error. Please check your connection and try again.');
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -217,12 +241,25 @@ export default function ContactPage() {
                   />
                 </div>
 
+                {/* Status Message */}
+                {status === 'success' && (
+                  <div className="p-4 bg-green-900/50 border border-green-500 rounded-lg text-green-400 text-sm">
+                    ✅ {statusMessage}
+                  </div>
+                )}
+                {status === 'error' && (
+                  <div className="p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-400 text-sm">
+                    ❌ {statusMessage}
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full px-8 py-4 bg-violet-500 hover:bg-violet-600 text-gray-900 font-bold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  disabled={status === 'loading'}
+                  className="w-full px-8 py-4 bg-violet-500 hover:bg-violet-600 disabled:opacity-60 disabled:cursor-not-allowed text-gray-900 font-bold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
                 >
-                  Send Message
+                  {status === 'loading' ? 'Sending...' : 'Send Message'}
                 </button>
               </form>
             </div>
