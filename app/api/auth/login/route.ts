@@ -194,8 +194,9 @@ export async function POST(request: NextRequest) {
           email: user.email, 
           name: user.name,
           role: user.role,
+          mustChangePassword: user.mustChangePassword || false,
         },
-        redirect: '/dashboard',
+        redirect: user.mustChangePassword ? '/change-password' : '/dashboard',
       },
       { status: 200, headers: securityHeaders }
     );
