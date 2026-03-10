@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         name: true, 
         role: true,
         status: true,
+        mustChangePassword: true,
       },
     });
 
@@ -99,6 +100,7 @@ export async function GET(request: NextRequest) {
           email: user.email,
           name: user.name,
           role: user.role,
+          mustChangePassword: user.mustChangePassword || false,
         },
         session: {
           expiresAt: new Date(sessionData.expiresAt).toISOString(),
