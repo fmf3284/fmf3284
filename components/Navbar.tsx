@@ -11,8 +11,6 @@ const navLinks = [
   { href: '/blog', label: 'Blog' },
   { href: '/deals', label: 'Deals' },
   { href: '/about', label: 'About' },
-  { href: '/affiliate', label: 'Affiliate' },
-  { href: '/join', label: 'Join' },
   { href: '/contact', label: 'Contact' },
 ] as const;
 
