@@ -1,0 +1,142 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function ChangePasswordPage() {
+  const router = useRouter();
+  const [userId, setUserId] = useState('');
+  const [formData, setFormData] = useState({ newPassword: '', confirmPassword: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    // Get userId from session
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.authenticated || !data.user?.mustChangePassword) {
+          router.replace('/dashboard');
+        } else {
+          setUserId(data.user.id);
+        }
+      })
+      .catch(() => router.replace('/login'));
+  }, [router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, userId }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setSuccess(data.message);
+        setTimeout(() => router.replace('/dashboard'), 2000);
+      } else {
+        setError(data.error || 'Something went wrong');
+      }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: '440px', background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(139, 92, 246, 0.3)' }}>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', padding: '32px 30px', textAlign: 'center' }}>
+          <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔐</div>
+          <h1 style={{ color: '#ffffff', margin: 0, fontSize: '24px', fontWeight: 700 }}>Set New Password</h1>
+          <p style={{ color: 'rgba(255,255,255,0.8)', margin: '8px 0 0', fontSize: '14px' }}>
+            You must set a new password before continuing
+          </p>
+        </div>
+
+        {/* Form */}
+        <div style={{ padding: '32px 30px' }}>
+          <div style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: '8px', padding: '14px 16px', marginBottom: '24px' }}>
+            <p style={{ color: '#c4b5fd', fontSize: '14px', margin: 0 }}>
+              🔑 You logged in with a temporary password. Please create a new secure password to continue.
+            </p>
+          </div>
+
+          {error && (
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
+              <p style={{ color: '#f87171', fontSize: '14px', margin: 0 }}>❌ {error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
+              <p style={{ color: '#34d399', fontSize: '14px', margin: 0 }}>✅ {success} Redirecting...</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', color: '#ffffff', fontWeight: 500, marginBottom: '8px', fontSize: '14px' }}>
+                New Password
+              </label>
+              <input
+                type="password"
+                value={formData.newPassword}
+                onChange={e => setFormData({ ...formData, newPassword: e.target.value })}
+                placeholder="Minimum 8 characters"
+                required
+                minLength={8}
+                style={{ width: '100%', padding: '12px 16px', background: '#0f0f1a', border: '1px solid #374151', borderRadius: '8px', color: '#ffffff', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', color: '#ffffff', fontWeight: 500, marginBottom: '8px', fontSize: '14px' }}>
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                value={formData.confirmPassword}
+                onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder="Repeat your new password"
+                required
+                minLength={8}
+                style={{ width: '100%', padding: '12px 16px', background: '#0f0f1a', border: '1px solid #374151', borderRadius: '8px', color: '#ffffff', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !!success}
+              style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'opacity 0.2s' }}
+            >
+              {loading ? 'Saving...' : 'Set New Password →'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+  );
+}
