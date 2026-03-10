@@ -75,7 +75,8 @@ export async function POST(request: NextRequest) {
         password: true, 
         role: true,
         status: true, 
-        loginCount: true 
+        loginCount: true,
+        mustChangePassword: true 
       },
     });
 
