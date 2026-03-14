@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState('');
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(900);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [resetEmail, setResetEmail] = useState('');
@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (step === '2fa' || step === 'reset-2fa') {
-      setCountdown(60);
+      setCountdown(900);
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
         setCountdown(prev => {
@@ -101,7 +101,7 @@ export default function LoginPage() {
       });
       setOtp('');
       setResendSuccess('New code sent!');
-      setCountdown(60);
+      setCountdown(900);
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
         setCountdown(prev => { if (prev <= 1) { clearInterval(timerRef.current!); return 0; } return prev - 1; });
@@ -245,7 +245,7 @@ export default function LoginPage() {
                   </div>
                   <div className="text-center">
                     {countdown > 0
-                      ? <p className="text-gray-500 text-sm">Expires in <span className={`font-bold ${countdown <= 15 ? 'text-red-400' : 'text-violet-400'}`}>{countdown}s</span></p>
+                      ? <p className="text-gray-500 text-sm">Expires in <span className={`font-bold ${countdown <= 15 ? 'text-red-400' : 'text-violet-400'}`}>{Math.floor(countdown/60)}:{String(countdown%60).padStart(2,'0')}</span></p>
                       : <p className="text-red-400 text-sm font-medium">Code expired</p>}
                   </div>
                   <button type="submit" disabled={otpLoading || otp.length !== 6 || countdown === 0}
@@ -255,7 +255,7 @@ export default function LoginPage() {
                   <div className="flex gap-3">
                     <button type="button" onClick={handleResendOtp} disabled={resendLoading || countdown > 0}
                       className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                      {resendLoading ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
+                      {resendLoading ? 'Sending...' : countdown > 0 ? `Resend in ${Math.floor(countdown/60)}m ${countdown%60}s` : 'Resend Code'}
                     </button>
                     <button type="button" onClick={() => { setStep('credentials'); setOtp(''); setOtpError(''); }}
                       className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-all">
@@ -319,7 +319,7 @@ export default function LoginPage() {
                     </div>
                     <div className="text-center">
                       {countdown > 0
-                        ? <p className="text-gray-500 text-sm">Expires in <span className={`font-bold ${countdown <= 15 ? 'text-red-400' : 'text-violet-400'}`}>{countdown}s</span></p>
+                        ? <p className="text-gray-500 text-sm">Expires in <span className={`font-bold ${countdown <= 15 ? 'text-red-400' : 'text-violet-400'}`}>{Math.floor(countdown/60)}:{String(countdown%60).padStart(2,'0')}</span></p>
                         : <p className="text-red-400 text-sm">Code expired — <button type="button" onClick={() => setStep('reset-email')} className="text-violet-400 underline">request a new one</button></p>}
                     </div>
                     <button type="submit" disabled={resetLoading || resetOtp.length !== 6 || countdown === 0}
