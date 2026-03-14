@@ -1,151 +1,394 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import { apiGet, apiDelete } from '@/lib/api';
 import { useToast } from '@/components/Toast';
 
-interface Location {
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+interface BlogPost {
   id: string;
-  name: string;
-  category: string;
-  city: string;
-  state: string;
-  rating: number;
-  reviewCount: number;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  content: string;
+  category: string | null;
+  coverImage: string | null;
+  isPublished: boolean;
+  publishedAt: string | null;
+  viewCount: number;
   createdAt: string;
 }
 
-export default function AdminLocations() {
-  const [locations, setLocations] = useState<Location[]>([]);
+const categories = ['Fitness Tips', 'Nutrition', 'Success Stories', 'Workout Guides', 'News'];
+
+export default function AdminBlogPage() {
+  const router = useRouter();
   const toast = useToast();
+    const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [form, setForm] = useState({
+    title: '',
+    content: '',
+    excerpt: '',
+    category: 'Fitness Tips',
+    coverImage: '',
+    isPublished: false,
+  });
 
   useEffect(() => {
-    loadLocations();
-  }, [page, search]);
+    checkAdminAndLoad();
+  }, []);
 
-  const loadLocations = async () => {
+  const checkAdminAndLoad = async () => {
+    try {
+      const sessionRes = await fetch('/api/auth/session');
+      const session = await sessionRes.json();
+      
+      if (!session.authenticated || session.user?.role !== 'admin') {
+        router.push('/login');
+        return;
+      }
+      
+      await loadPosts();
+    } catch {
+      router.push('/login');
+    }
+  };
+
+  const loadPosts = async () => {
     try {
       setLoading(true);
-      const response = await apiGet(`/api/admin/locations?page=${page}&search=${search}`);
-      setLocations(response.data || []);
-      setTotalPages(response.pagination?.totalPages || 1);
-    } catch (err: any) {
-      console.error('Failed to load locations:', err);
+      const response = await fetch('/api/admin/blog');
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data.posts || []);
+      }
+    } catch (error) {
+      console.error('Failed to load posts:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (locationId: string) => {
-    if (!confirm('Are you sure you want to delete this location? This will also delete all reviews and bookmarks. This action cannot be undone.')) return;
+  const openCreateModal = () => {
+    setEditingPost(null);
+    setForm({
+      title: '',
+      content: '',
+      excerpt: '',
+      category: 'Fitness Tips',
+      coverImage: '',
+      isPublished: false,
+    });
+    setShowModal(true);
+  };
+
+  const openEditModal = (post: BlogPost) => {
+    setEditingPost(post);
+    setForm({
+      title: post.title,
+      content: post.content,
+      excerpt: post.excerpt || '',
+      category: post.category || 'Fitness Tips',
+      coverImage: post.coverImage || '',
+      isPublished: post.isPublished,
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.title || !form.content) {
+      toast.warning('Title and content are required');
+      return;
+    }
 
     try {
-      await apiDelete(`/api/admin/locations/${locationId}`);
-      loadLocations();
-    } catch (err: any) {
-      toast.error(err.data?.error || 'Failed to delete location');
+      const url = editingPost 
+        ? `/api/admin/blog/${editingPost.id}`
+        : '/api/admin/blog';
+      
+      const response = await fetch(url, {
+        method: editingPost ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+
+      if (response.ok) {
+        setShowModal(false);
+        loadPosts();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to save post');
+      }
+    } catch {
+      toast.error('Failed to save post');
     }
   };
 
+  const handleDelete = async (post: BlogPost) => {
+    if (!confirm(`Delete "${post.title}"?`)) return;
+
+    try {
+      const response = await fetch(`/api/admin/blog/${post.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        loadPosts();
+      } else {
+        toast.error('Failed to delete post');
+      }
+    } catch {
+      toast.error('Failed to delete post');
+    }
+  };
+
+  const togglePublish = async (post: BlogPost) => {
+    try {
+      await fetch(`/api/admin/blog/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublished: !post.isPublished }),
+      });
+      loadPosts();
+    } catch {
+      toast.error('Failed to update post');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#13131a] flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-violet-500">Manage Locations</h1>
-          <a href="/admin" className="text-violet-500 hover:underline">
-            Back to Dashboard
-          </a>
+    <div className="min-h-screen bg-[#13131a] text-white p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+              ✍️ Blog Management
+            </h1>
+            <Link href="/admin" className="text-violet-500 hover:underline text-sm">
+              ← Back to Dashboard
+            </Link>
+          </div>
+          <button
+            onClick={openCreateModal}
+            className="px-6 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg font-semibold transition-all"
+          >
+            + New Post
+          </button>
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Search locations by name, city, or category..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-violet-500"
-          />
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="bg-[#1e1e2d] rounded-lg p-4 border border-violet-900/30">
+            <div className="text-gray-400 text-sm">Total Posts</div>
+            <div className="text-2xl font-bold text-violet-500">{posts.length}</div>
+          </div>
+          <div className="bg-[#1e1e2d] rounded-lg p-4 border border-green-900/30">
+            <div className="text-gray-400 text-sm">Published</div>
+            <div className="text-2xl font-bold text-green-500">{posts.filter(p => p.isPublished).length}</div>
+          </div>
+          <div className="bg-[#1e1e2d] rounded-lg p-4 border border-yellow-900/30">
+            <div className="text-gray-400 text-sm">Drafts</div>
+            <div className="text-2xl font-bold text-yellow-500">{posts.filter(p => !p.isPublished).length}</div>
+          </div>
+          <div className="bg-[#1e1e2d] rounded-lg p-4 border border-blue-900/30">
+            <div className="text-gray-400 text-sm">Total Views</div>
+            <div className="text-2xl font-bold text-blue-500">{posts.reduce((sum, p) => sum + p.viewCount, 0)}</div>
+          </div>
         </div>
 
-        {/* Locations Table */}
-        <div className="bg-gray-800 rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Rating</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {locations.map((location) => (
-                <tr key={location.id}>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium">{location.name}</div>
-                    <div className="text-xs text-gray-400">ID: {location.id}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm">{location.category}</td>
-                  <td className="px-6 py-4 text-sm text-gray-400">
-                    {location.city}, {location.state}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div>{location.rating.toFixed(1)} stars</div>
-                    <div className="text-xs text-gray-400">{location.reviewCount} reviews</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-400">
-                    {new Date(location.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <a
-                        href={`/locations/${location.id}`}
-                        className="text-violet-500 hover:text-violet-400 text-sm"
-                      >
-                        View
-                      </a>
-                      <button
-                        onClick={() => handleDelete(location.id)}
-                        className="text-red-400 hover:text-red-300 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+        {/* Posts Table */}
+        <div className="bg-[#1e1e2d] rounded-xl overflow-hidden border border-violet-900/30">
+          {posts.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="text-6xl mb-4">📝</div>
+              <h3 className="text-xl font-bold text-white mb-2">No Posts Yet</h3>
+              <p className="text-gray-400 mb-4">Start sharing fitness tips and stories with your community!</p>
+              <button
+                onClick={openCreateModal}
+                className="px-6 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+              >
+                Write First Post
+              </button>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-[#2a2a3d]">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Post</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Views</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="mt-6 flex justify-center gap-2">
-          <button
-            onClick={() => setPage(page - 1)}
-            disabled={page === 1}
-            className="px-4 py-2 bg-gray-800 text-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <span className="px-4 py-2 text-gray-400">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={page === totalPages}
-            className="px-4 py-2 bg-gray-800 text-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {posts.map((post) => (
+                  <tr key={post.id} className={!post.isPublished ? 'opacity-70' : ''}>
+                    <td className="px-4 py-4">
+                      <div className="font-medium text-white">{post.title}</div>
+                      <div className="text-xs text-gray-500 truncate max-w-xs">{post.excerpt}</div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="px-2 py-1 bg-gray-700 rounded text-xs">{post.category || 'Uncategorized'}</span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        post.isPublished 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                        {post.isPublished ? '✅ Published' : '📝 Draft'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-400">
+                      {post.viewCount}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-400">
+                      {new Date(post.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => togglePublish(post)}
+                          className={`px-2 py-1 text-xs rounded ${
+                            post.isPublished 
+                              ? 'bg-yellow-600 hover:bg-yellow-700' 
+                              : 'bg-green-600 hover:bg-green-700'
+                          }`}
+                          title={post.isPublished ? 'Unpublish' : 'Publish'}
+                        >
+                          {post.isPublished ? '📝' : '🚀'}
+                        </button>
+                        <button
+                          onClick={() => openEditModal(post)}
+                          className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-xs rounded"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDelete(post)}
+                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-xs rounded"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1e1e2d] rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-white mb-4">
+              {editingPost ? 'Edit Post' : 'Create New Post'}
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Title *</label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                  placeholder="How to Start Your Fitness Journey"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Excerpt</label>
+                <input
+                  type="text"
+                  value={form.excerpt}
+                  onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                  placeholder="A brief summary of your post..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Content *</label>
+                <textarea
+                  value={form.content}
+                  onChange={(e) => setForm({ ...form, content: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white font-mono text-sm"
+                  rows={12}
+                  placeholder="Write your post content here... (Markdown supported)"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Category</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Cover Image URL</label>
+                  <input
+                    type="url"
+                    value={form.coverImage}
+                    onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="published"
+                  checked={form.isPublished}
+                  onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="published" className="text-sm text-gray-300">🚀 Publish immediately</label>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="flex-1 px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+              >
+                {editingPost ? 'Update' : 'Create'} Post
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
