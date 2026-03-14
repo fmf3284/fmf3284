@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from '@/components/Toast';
 
 interface Review {
   id: string;
@@ -23,6 +24,7 @@ interface Review {
 export default function AdminReviews() {
   const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>([]);
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -85,10 +87,10 @@ export default function AdminReviews() {
         await loadReviews();
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to update review');
+        toast.error(data.error || 'Failed to update review');
       }
     } catch (err) {
-      alert('Failed to update review');
+      toast.error('Failed to update review');
     } finally {
       setUpdating(null);
     }
@@ -107,10 +109,10 @@ export default function AdminReviews() {
         await loadReviews();
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to delete review');
+        toast.error(data.error || 'Failed to delete review');
       }
     } catch (err) {
-      alert('Failed to delete review');
+      toast.error('Failed to delete review');
     } finally {
       setUpdating(null);
     }
