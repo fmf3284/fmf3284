@@ -104,11 +104,16 @@ const allAmenities = Array.from(
   new Set(mockLocations.flatMap((loc) => loc.amenities || []))
 ).sort();
 
-const categories = ['All', 'Gym', 'Yoga', 'Pilates', 'Cross Training', 'Sports Club', 'Personal Trainer'];
+const categories = [
+  'All', 'Gym', 'Yoga', 'Pilates', 'CrossFit', 'Sports Club', 'Personal Trainer',
+  'Dance', 'Martial Arts', 'Boxing', 'Swimming', 'Cycling', 'Barre',
+  'Climbing', 'Tennis', 'Wellness', 'Rehabilitation',
+];
 const sortOptions = [
+  'Rating (High-Low)',
+  'Most Reviewed',
   'Name (A-Z)',
   'Name (Z-A)',
-  'Distance',
 ];
 const distanceOptions = ['All', 'Under 1 mile', '1-2 miles', '2-3 miles', '3+ miles'];
 
@@ -165,28 +170,44 @@ export default function LocationsPage() {
     fetchedReviewCount?: number | null
   ): FitnessLocation => {
     const types = place.types || [];
+    const name = place.name?.toLowerCase() || '';
     let category = 'Gym';
+    // Type-based detection first
     if (types.some(t => t.includes('yoga'))) category = 'Yoga';
     else if (types.some(t => t.includes('pilates'))) category = 'Pilates';
-    else if (types.some(t => t.includes('crossfit'))) category = 'Cross Training';
+    else if (types.some(t => t.includes('crossfit'))) category = 'CrossFit';
     else if (types.some(t => t.includes('sport'))) category = 'Sports Club';
-    else if (place.name?.toLowerCase().includes('yoga')) category = 'Yoga';
-    else if (place.name?.toLowerCase().includes('pilates')) category = 'Pilates';
-    else if (place.name?.toLowerCase().includes('crossfit')) category = 'Cross Training';
-    else if (place.name?.toLowerCase().includes('personal train')) category = 'Personal Trainer';
+    else if (types.some(t => t.includes('swim') || t.includes('aquatic'))) category = 'Swimming';
+    else if (types.some(t => t.includes('tennis') || t.includes('racquet'))) category = 'Tennis';
+    // Name-based detection
+    else if (name.includes('yoga') || name.includes('namaste') || name.includes('bikram') || name.includes('hot yoga')) category = 'Yoga';
+    else if (name.includes('pilates') || name.includes('reformer')) category = 'Pilates';
+    else if (name.includes('crossfit') || name.includes('cross fit')) category = 'CrossFit';
+    else if (name.includes('personal train') || name.includes('private train') || name.includes('1-on-1') || name.includes('one on one')) category = 'Personal Trainer';
+    else if (name.includes('dance') || name.includes('ballet') || name.includes('salsa') || name.includes('zumba') || name.includes('hip hop')) category = 'Dance';
+    else if (name.includes('martial art') || name.includes('karate') || name.includes('judo') || name.includes('taekwondo') || name.includes('jiu jitsu') || name.includes('bjj') || name.includes('kung fu')) category = 'Martial Arts';
+    else if (name.includes('boxing') || name.includes('mma') || name.includes('kickbox') || name.includes('muay thai') || name.includes('title box')) category = 'Boxing';
+    else if (name.includes('swim') || name.includes('aquatic') || name.includes('pool') || name.includes('natatorium')) category = 'Swimming';
+    else if (name.includes('cycl') || name.includes('spin') || name.includes('soulcycle') || name.includes('cyclebar') || name.includes('peloton')) category = 'Cycling';
+    else if (name.includes('barre') || name.includes('pure barre') || name.includes('barre3')) category = 'Barre';
+    else if (name.includes('climb') || name.includes('boulder') || name.includes('rock gym') || name.includes('vertical') || name.includes('summit')) category = 'Climbing';
+    else if (name.includes('tennis') || name.includes('racquet') || name.includes('squash') || name.includes('pickleball')) category = 'Tennis';
+    else if (name.includes('wellness') || name.includes('ymca') || name.includes('recreation') || name.includes('community center') || name.includes('health center')) category = 'Wellness';
+    else if (name.includes('physical therapy') || name.includes('rehab') || name.includes('chiropract') || name.includes('sport medicine') || name.includes('recovery')) category = 'Rehabilitation';
+    else if (name.includes('sport') || name.includes('athletic') || name.includes('arena') || name.includes('stadium') || name.includes('complex')) category = 'Sports Club';
     
     // Get real photo URL from Google Places
     let imageUrl = '';
     if (place.photos && place.photos.length > 0) {
       imageUrl = place.photos[0].getUrl({ maxWidth: 400, maxHeight: 300 });
     }
+    // (name already defined above for category detection)
     
     // Use fetched rating (more accurate) or fall back to search result rating
     const rating = fetchedRating ?? place.rating ?? 0;
     const reviewCount = fetchedReviewCount ?? place.user_ratings_total ?? 0;
     
     // Determine price range - Google rarely has this for gyms, so we estimate
-    const name = place.name?.toLowerCase() || '';
     let priceRange = ''; // Empty by default - don't show if we don't know
     
     // Use fetched price level if available (rare for gyms)
@@ -305,8 +326,50 @@ export default function LocationsPage() {
     const allResults: google.maps.places.PlaceResult[] = [];
     let completedSearches = 0;
     const radiusMeters = radius * 1609.34;
-    const searchKeywords = ['gym', 'fitness center', 'yoga studio', 'pilates', 'crossfit', 'personal trainer', 'sports club'];
+    const searchKeywords = [
+      // Core fitness
+      'gym', 'fitness center', 'health club',
+      // Mind-body
+      'yoga studio', 'pilates studio', 'barre studio',
+      // High intensity
+      'crossfit', 'hiit studio', 'bootcamp fitness', 'f45', 'orangetheory',
+      // Combat sports
+      'boxing gym', 'martial arts', 'mma gym', 'kickboxing',
+      // Specialized
+      'dance studio', 'cycling studio', 'spin class',
+      'swimming pool fitness', 'aquatic center',
+      'rock climbing gym', 'climbing wall',
+      // Personal training
+      'personal trainer', 'personal training studio',
+      // Broader fitness
+      'sports club', 'recreation center', 'wellness center', 'ymca',
+      // Rehab & recovery
+      'physical therapy', 'sports rehabilitation',
+      // Racquet sports
+      'tennis club', 'racquetball', 'pickleball',
+      // Stadium / arena fitness
+      'stadium fitness', 'arena gym', 'functional fitness',
+    ];
     
+    // Also do a nearbySearch with type 'gym' to catch all fitness places
+    // even if their name doesn't contain a keyword
+    const nearbyTypes = ['gym'];
+    const totalSearches = searchKeywords.length + nearbyTypes.length;
+    let completedNearby = 0;
+
+    nearbyTypes.forEach((type) => {
+      service.nearbySearch({ location: latlng, radius: radiusMeters, type }, (results, status) => {
+        completedNearby++;
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          results.forEach((place) => {
+            if (!allResults.find((p) => p.place_id === place.place_id)) {
+              allResults.push(place);
+            }
+          });
+        }
+      });
+    });
+
     searchKeywords.forEach((keyword) => {
       service.textSearch({ location: latlng, radius: radiusMeters, query: keyword }, async (results, status) => {
         completedSearches++;
@@ -319,7 +382,7 @@ export default function LocationsPage() {
         }
         if (completedSearches === searchKeywords.length) {
           allResults.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-          const top30 = allResults.slice(0, 30);
+          const top30 = allResults.slice(0, 60);
           
           // Fetch details for top results
           const converted: FitnessLocation[] = [];
@@ -604,14 +667,16 @@ export default function LocationsPage() {
     })
     .sort((a, b) => {
       switch (sortBy) {
+        case 'Rating (High-Low)':
+          return (b.rating || 0) - (a.rating || 0);
+        case 'Most Reviewed':
+          return (b.reviewCount || 0) - (a.reviewCount || 0);
         case 'Name (A-Z)':
           return a.name.localeCompare(b.name);
         case 'Name (Z-A)':
           return b.name.localeCompare(a.name);
-        case 'Distance':
-          return parseFloat(a.distance || '0') - parseFloat(b.distance || '0');
         default:
-          return a.name.localeCompare(b.name);
+          return (b.rating || 0) - (a.rating || 0);
       }
     });
 
@@ -763,9 +828,19 @@ export default function LocationsPage() {
                   'Gym': 'bg-red-500 text-white',
                   'Yoga': 'bg-green-500 text-white',
                   'Pilates': 'bg-blue-500 text-white',
-                  'Cross Training': 'bg-orange-500 text-white',
+                  'CrossFit': 'bg-orange-500 text-white',
                   'Sports Club': 'bg-yellow-500 text-gray-900',
                   'Personal Trainer': 'bg-pink-500 text-white',
+                  'Dance': 'bg-fuchsia-500 text-white',
+                  'Martial Arts': 'bg-red-700 text-white',
+                  'Boxing': 'bg-rose-600 text-white',
+                  'Swimming': 'bg-cyan-500 text-white',
+                  'Cycling': 'bg-amber-500 text-white',
+                  'Barre': 'bg-purple-400 text-white',
+                  'Climbing': 'bg-stone-500 text-white',
+                  'Tennis': 'bg-lime-500 text-white',
+                  'Wellness': 'bg-teal-500 text-white',
+                  'Rehabilitation': 'bg-sky-600 text-white',
                 };
                 const activeColor = categoryColors[category] || 'bg-violet-500 text-white';
                 
@@ -981,8 +1056,8 @@ export default function LocationsPage() {
           {isSearching && realPlaces.length === 0 ? (
             <div className="text-center py-20">
               <div className="animate-spin rounded-full h-16 w-16 border-4 border-violet-500 border-t-transparent mx-auto mb-6"></div>
-              <h3 className="text-2xl font-bold text-white mb-3">Finding fitness locations near you...</h3>
-              <p className="text-gray-400">This may take a few moments</p>
+              <h3 className="text-2xl font-bold text-white mb-3">Searching 30+ fitness categories near you...</h3>
+              <p className="text-gray-400">Gyms, studios, courts, pools, trainers and more</p>
             </div>
           ) : filteredLocations.length === 0 ? (
             <div className="text-center py-20">
