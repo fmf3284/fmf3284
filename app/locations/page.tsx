@@ -106,8 +106,9 @@ const allAmenities = Array.from(
 
 const categories = [
   'All', 'Gym', 'Yoga', 'Pilates', 'CrossFit', 'Sports Club', 'Personal Trainer',
-  'Dance', 'Martial Arts', 'Boxing', 'Swimming', 'Cycling', 'Barre',
-  'Climbing', 'Tennis', 'Wellness', 'Rehabilitation',
+  'Dance', 'Martial Arts', 'Boxing', 'Kickboxing', 'Swimming', 'Cycling', 'Barre',
+  'Climbing', 'Tennis', 'Pickleball', 'Weightlifting', 'Gymnastics',
+  'Rowing', 'Running', 'Stretching', 'Sauna & Recovery', 'Wellness', 'Rehabilitation',
 ];
 const sortOptions = [
   'Rating (High-Low)',
@@ -186,14 +187,24 @@ export default function LocationsPage() {
     else if (name.includes('personal train') || name.includes('private train') || name.includes('1-on-1') || name.includes('one on one')) category = 'Personal Trainer';
     else if (name.includes('dance') || name.includes('ballet') || name.includes('salsa') || name.includes('zumba') || name.includes('hip hop')) category = 'Dance';
     else if (name.includes('martial art') || name.includes('karate') || name.includes('judo') || name.includes('taekwondo') || name.includes('jiu jitsu') || name.includes('bjj') || name.includes('kung fu')) category = 'Martial Arts';
-    else if (name.includes('boxing') || name.includes('mma') || name.includes('kickbox') || name.includes('muay thai') || name.includes('title box')) category = 'Boxing';
+    else if (name.includes('boxing') || name.includes('mma') || name.includes('title box') || name.includes('gleason')) category = 'Boxing';
+    else if (name.includes('kickbox') || name.includes('muay thai') || name.includes('9round') || name.includes('cardio kick')) category = 'Kickboxing';
     else if (name.includes('swim') || name.includes('aquatic') || name.includes('pool') || name.includes('natatorium')) category = 'Swimming';
     else if (name.includes('cycl') || name.includes('spin') || name.includes('soulcycle') || name.includes('cyclebar') || name.includes('peloton')) category = 'Cycling';
     else if (name.includes('barre') || name.includes('pure barre') || name.includes('barre3')) category = 'Barre';
     else if (name.includes('climb') || name.includes('boulder') || name.includes('rock gym') || name.includes('vertical') || name.includes('summit')) category = 'Climbing';
-    else if (name.includes('tennis') || name.includes('racquet') || name.includes('squash') || name.includes('pickleball')) category = 'Tennis';
+    else if (name.includes('tennis') || name.includes('racquet') || name.includes('squash')) category = 'Tennis';
+    else if (name.includes('pickleball') || name.includes('pickle ball')) category = 'Pickleball';
     else if (name.includes('wellness') || name.includes('ymca') || name.includes('recreation') || name.includes('community center') || name.includes('health center')) category = 'Wellness';
     else if (name.includes('physical therapy') || name.includes('rehab') || name.includes('chiropract') || name.includes('sport medicine') || name.includes('recovery')) category = 'Rehabilitation';
+    else if (name.includes('kickbox') || name.includes('muay thai') || name.includes('cardio kick') || name.includes('9round')) category = 'Kickboxing';
+    else if (name.includes('weightlift') || name.includes('powerlifting') || name.includes('olympic lift') || name.includes('barbell') || name.includes('strength') || name.includes('iron')) category = 'Weightlifting';
+    else if (name.includes('gymnastic') || name.includes('tumble') || name.includes('cheer') || name.includes('acrobat')) category = 'Gymnastics';
+    else if (name.includes('rowing') || name.includes('cityrow') || name.includes('row house') || name.includes('ergometer')) category = 'Rowing';
+    else if (name.includes('run') || name.includes('running club') || name.includes('track') || name.includes('marathon') || name.includes('stride')) category = 'Running';
+    else if (name.includes('stretch') || name.includes('stretchlab') || name.includes('mobility') || name.includes('flexibility') || name.includes('foam roll')) category = 'Stretching';
+    else if (name.includes('sauna') || name.includes('cryo') || name.includes('float') || name.includes('infrared') || name.includes('ice bath') || name.includes('recovery lounge') || name.includes('bathhouse')) category = 'Sauna & Recovery';
+    else if (name.includes('pickleball') || name.includes('pickle ball')) category = 'Pickleball';
     else if (name.includes('sport') || name.includes('athletic') || name.includes('arena') || name.includes('stadium') || name.includes('complex')) category = 'Sports Club';
     
     // Get real photo URL from Google Places
@@ -334,7 +345,7 @@ export default function LocationsPage() {
       // High intensity
       'crossfit', 'hiit studio', 'bootcamp fitness', 'f45', 'orangetheory',
       // Combat sports
-      'boxing gym', 'martial arts', 'mma gym', 'kickboxing',
+      'boxing gym', 'martial arts', 'mma gym', 'kickboxing studio', 'muay thai',
       // Specialized
       'dance studio', 'cycling studio', 'spin class',
       'swimming pool fitness', 'aquatic center',
@@ -344,9 +355,19 @@ export default function LocationsPage() {
       // Broader fitness
       'sports club', 'recreation center', 'wellness center', 'ymca',
       // Rehab & recovery
-      'physical therapy', 'sports rehabilitation',
+      'physical therapy', 'sports rehabilitation', 'stretch lab', 'mobility studio',
       // Racquet sports
-      'tennis club', 'racquetball', 'pickleball',
+      'tennis club', 'racquetball', 'pickleball court',
+      // Strength
+      'weightlifting gym', 'powerlifting gym', 'barbell club',
+      // Gymnastics
+      'gymnastics center', 'gymnastics academy', 'tumbling gym',
+      // Rowing
+      'rowing studio', 'row house fitness', 'indoor rowing',
+      // Running
+      'running club', 'running track', 'run studio',
+      // Recovery
+      'sauna studio', 'cryotherapy', 'float tank', 'infrared sauna', 'recovery center',
       // Stadium / arena fitness
       'stadium fitness', 'arena gym', 'functional fitness',
     ];
@@ -834,11 +855,19 @@ export default function LocationsPage() {
                   'Dance': 'bg-fuchsia-500 text-white',
                   'Martial Arts': 'bg-red-700 text-white',
                   'Boxing': 'bg-rose-600 text-white',
+                  'Kickboxing': 'bg-red-400 text-white',
                   'Swimming': 'bg-cyan-500 text-white',
                   'Cycling': 'bg-amber-500 text-white',
                   'Barre': 'bg-purple-400 text-white',
                   'Climbing': 'bg-stone-500 text-white',
                   'Tennis': 'bg-lime-500 text-white',
+                  'Pickleball': 'bg-lime-400 text-gray-900',
+                  'Weightlifting': 'bg-gray-600 text-white',
+                  'Gymnastics': 'bg-indigo-500 text-white',
+                  'Rowing': 'bg-blue-700 text-white',
+                  'Running': 'bg-emerald-500 text-white',
+                  'Stretching': 'bg-violet-300 text-gray-900',
+                  'Sauna & Recovery': 'bg-orange-700 text-white',
                   'Wellness': 'bg-teal-500 text-white',
                   'Rehabilitation': 'bg-sky-600 text-white',
                 };
