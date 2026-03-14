@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useToast } from '@/components/Toast';
 
 
 interface PlaceDetails {
@@ -32,6 +33,7 @@ export default function LocationDetailPage() {
   const placeId = params.id as string;
   
   const [place, setPlace] = useState<PlaceDetails | null>(null);
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
@@ -171,11 +173,11 @@ export default function LocationDetailPage() {
         setReviewText('');
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to submit review');
+        toast.error(data.error || 'Failed to submit review');
       }
     } catch (error) {
       console.error('Failed to submit review:', error);
-      alert('Failed to submit review. Please try again.');
+      toast.warning('Failed to submit review. Please try again.');
     } finally {
       setSubmitting(false);
     }
