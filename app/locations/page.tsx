@@ -9,14 +9,14 @@ import GoogleMap from '@/components/GoogleMap';
 const mockLocations: FitnessLocation[] = [
   {
     id: '1',
-    name: 'Elite Fitness Center',
+    name: 'Austin Fitness Club',
     category: 'Gym',
-    address: '123 Main Street',
-    city: 'New York',
-    state: 'NY',
-    phone: '(212) 555-0123',
+    address: '500 W 2nd St',
+    city: 'Austin',
+    state: 'TX',
+    phone: '(512) 555-0123',
     rating: 4.5,
-    reviewCount: 243,
+    reviewCount: 312,
     image: '💪',
     distance: '0.8 miles',
     priceRange: '$$',
@@ -24,29 +24,29 @@ const mockLocations: FitnessLocation[] = [
   },
   {
     id: '2',
-    name: 'Zen Yoga Studio',
+    name: 'Black Swan Yoga Austin',
     category: 'Yoga',
-    address: '456 Park Avenue',
-    city: 'New York',
-    state: 'NY',
-    phone: '(212) 555-0456',
+    address: '4218 N Lamar Blvd',
+    city: 'Austin',
+    state: 'TX',
+    phone: '(512) 555-0456',
     rating: 4.8,
-    reviewCount: 187,
+    reviewCount: 224,
     image: '🧘',
     distance: '1.2 miles',
     priceRange: '$',
-    amenities: ['Mat Rental', 'Showers', 'Meditation Room', 'Tea Bar'],
+    amenities: ['Mat Rental', 'Showers', 'Meditation Room', 'Community Classes'],
   },
   {
     id: '3',
-    name: 'PowerCore Pilates',
+    name: 'Club Pilates South Lamar',
     category: 'Pilates',
-    address: '789 Broadway',
-    city: 'New York',
-    state: 'NY',
-    phone: '(212) 555-0789',
-    rating: 4.6,
-    reviewCount: 156,
+    address: '1800 S Lamar Blvd',
+    city: 'Austin',
+    state: 'TX',
+    phone: '(512) 555-0789',
+    rating: 4.7,
+    reviewCount: 178,
     image: '🤸',
     distance: '1.5 miles',
     priceRange: '$$',
@@ -54,14 +54,14 @@ const mockLocations: FitnessLocation[] = [
   },
   {
     id: '4',
-    name: 'CrossFit Downtown',
-    category: 'Cross Training',
-    address: '321 Fifth Avenue',
-    city: 'New York',
-    state: 'NY',
-    phone: '(212) 555-0321',
-    rating: 4.7,
-    reviewCount: 298,
+    name: 'CrossFit Austin',
+    category: 'CrossFit',
+    address: '979 Springdale Rd',
+    city: 'Austin',
+    state: 'TX',
+    phone: '(512) 555-0321',
+    rating: 4.9,
+    reviewCount: 341,
     image: '🏋️',
     distance: '2.1 miles',
     priceRange: '$$$',
@@ -69,14 +69,14 @@ const mockLocations: FitnessLocation[] = [
   },
   {
     id: '5',
-    name: 'NYC Sports Complex',
+    name: 'Austin Sports & Social Club',
     category: 'Sports Club',
-    address: '654 West Street',
-    city: 'New York',
-    state: 'NY',
-    phone: '(212) 555-0654',
+    address: '3600 Presidential Blvd',
+    city: 'Austin',
+    state: 'TX',
+    phone: '(512) 555-0654',
     rating: 4.4,
-    reviewCount: 421,
+    reviewCount: 198,
     image: '⚽',
     distance: '2.8 miles',
     priceRange: '$$',
@@ -84,18 +84,18 @@ const mockLocations: FitnessLocation[] = [
   },
   {
     id: '6',
-    name: 'Premium Personal Training',
+    name: 'Atomic Athlete Austin',
     category: 'Personal Trainer',
-    address: '987 Madison Avenue',
-    city: 'New York',
-    state: 'NY',
-    phone: '(212) 555-0987',
+    address: '4616 Triangle Ave',
+    city: 'Austin',
+    state: 'TX',
+    phone: '(512) 555-0987',
     rating: 4.9,
-    reviewCount: 89,
+    reviewCount: 127,
     image: '🎯',
     distance: '1.0 miles',
     priceRange: '$$$',
-    amenities: ['1-on-1 Training', 'Custom Programs', 'Nutrition Plans', 'Virtual Sessions'],
+    amenities: ['1-on-1 Training', 'Custom Programs', 'Nutrition Plans', 'Performance Testing'],
   },
 ];
 
@@ -106,9 +106,8 @@ const allAmenities = Array.from(
 
 const categories = [
   'All', 'Gym', 'Yoga', 'Pilates', 'CrossFit', 'Sports Club', 'Personal Trainer',
-  'Dance', 'Martial Arts', 'Boxing', 'Kickboxing', 'Swimming', 'Cycling', 'Barre',
-  'Climbing', 'Tennis', 'Pickleball', 'Weightlifting', 'Gymnastics',
-  'Rowing', 'Running', 'Stretching', 'Sauna & Recovery', 'Wellness', 'Rehabilitation',
+  'Dance', 'Martial Arts', 'Boxing', 'Swimming', 'Cycling', 'Barre',
+  'Climbing', 'Tennis', 'Wellness', 'Rehabilitation',
 ];
 const sortOptions = [
   'Rating (High-Low)',
@@ -187,24 +186,14 @@ export default function LocationsPage() {
     else if (name.includes('personal train') || name.includes('private train') || name.includes('1-on-1') || name.includes('one on one')) category = 'Personal Trainer';
     else if (name.includes('dance') || name.includes('ballet') || name.includes('salsa') || name.includes('zumba') || name.includes('hip hop')) category = 'Dance';
     else if (name.includes('martial art') || name.includes('karate') || name.includes('judo') || name.includes('taekwondo') || name.includes('jiu jitsu') || name.includes('bjj') || name.includes('kung fu')) category = 'Martial Arts';
-    else if (name.includes('boxing') || name.includes('mma') || name.includes('title box') || name.includes('gleason')) category = 'Boxing';
-    else if (name.includes('kickbox') || name.includes('muay thai') || name.includes('9round') || name.includes('cardio kick')) category = 'Kickboxing';
+    else if (name.includes('boxing') || name.includes('mma') || name.includes('kickbox') || name.includes('muay thai') || name.includes('title box')) category = 'Boxing';
     else if (name.includes('swim') || name.includes('aquatic') || name.includes('pool') || name.includes('natatorium')) category = 'Swimming';
     else if (name.includes('cycl') || name.includes('spin') || name.includes('soulcycle') || name.includes('cyclebar') || name.includes('peloton')) category = 'Cycling';
     else if (name.includes('barre') || name.includes('pure barre') || name.includes('barre3')) category = 'Barre';
     else if (name.includes('climb') || name.includes('boulder') || name.includes('rock gym') || name.includes('vertical') || name.includes('summit')) category = 'Climbing';
-    else if (name.includes('tennis') || name.includes('racquet') || name.includes('squash')) category = 'Tennis';
-    else if (name.includes('pickleball') || name.includes('pickle ball')) category = 'Pickleball';
+    else if (name.includes('tennis') || name.includes('racquet') || name.includes('squash') || name.includes('pickleball')) category = 'Tennis';
     else if (name.includes('wellness') || name.includes('ymca') || name.includes('recreation') || name.includes('community center') || name.includes('health center')) category = 'Wellness';
     else if (name.includes('physical therapy') || name.includes('rehab') || name.includes('chiropract') || name.includes('sport medicine') || name.includes('recovery')) category = 'Rehabilitation';
-    else if (name.includes('kickbox') || name.includes('muay thai') || name.includes('cardio kick') || name.includes('9round')) category = 'Kickboxing';
-    else if (name.includes('weightlift') || name.includes('powerlifting') || name.includes('olympic lift') || name.includes('barbell') || name.includes('strength') || name.includes('iron')) category = 'Weightlifting';
-    else if (name.includes('gymnastic') || name.includes('tumble') || name.includes('cheer') || name.includes('acrobat')) category = 'Gymnastics';
-    else if (name.includes('rowing') || name.includes('cityrow') || name.includes('row house') || name.includes('ergometer')) category = 'Rowing';
-    else if (name.includes('run') || name.includes('running club') || name.includes('track') || name.includes('marathon') || name.includes('stride')) category = 'Running';
-    else if (name.includes('stretch') || name.includes('stretchlab') || name.includes('mobility') || name.includes('flexibility') || name.includes('foam roll')) category = 'Stretching';
-    else if (name.includes('sauna') || name.includes('cryo') || name.includes('float') || name.includes('infrared') || name.includes('ice bath') || name.includes('recovery lounge') || name.includes('bathhouse')) category = 'Sauna & Recovery';
-    else if (name.includes('pickleball') || name.includes('pickle ball')) category = 'Pickleball';
     else if (name.includes('sport') || name.includes('athletic') || name.includes('arena') || name.includes('stadium') || name.includes('complex')) category = 'Sports Club';
     
     // Get real photo URL from Google Places
@@ -345,7 +334,7 @@ export default function LocationsPage() {
       // High intensity
       'crossfit', 'hiit studio', 'bootcamp fitness', 'f45', 'orangetheory',
       // Combat sports
-      'boxing gym', 'martial arts', 'mma gym', 'kickboxing studio', 'muay thai',
+      'boxing gym', 'martial arts', 'mma gym', 'kickboxing',
       // Specialized
       'dance studio', 'cycling studio', 'spin class',
       'swimming pool fitness', 'aquatic center',
@@ -355,19 +344,9 @@ export default function LocationsPage() {
       // Broader fitness
       'sports club', 'recreation center', 'wellness center', 'ymca',
       // Rehab & recovery
-      'physical therapy', 'sports rehabilitation', 'stretch lab', 'mobility studio',
+      'physical therapy', 'sports rehabilitation',
       // Racquet sports
-      'tennis club', 'racquetball', 'pickleball court',
-      // Strength
-      'weightlifting gym', 'powerlifting gym', 'barbell club',
-      // Gymnastics
-      'gymnastics center', 'gymnastics academy', 'tumbling gym',
-      // Rowing
-      'rowing studio', 'row house fitness', 'indoor rowing',
-      // Running
-      'running club', 'running track', 'run studio',
-      // Recovery
-      'sauna studio', 'cryotherapy', 'float tank', 'infrared sauna', 'recovery center',
+      'tennis club', 'racquetball', 'pickleball',
       // Stadium / arena fitness
       'stadium fitness', 'arena gym', 'functional fitness',
     ];
@@ -840,50 +819,55 @@ export default function LocationsPage() {
             </div>
           </div>
 
-          {/* Category Filter */}
+          {/* Category Filter — scrollable pill row with emoji icons */}
           <div className="mb-6">
-            <div className="flex flex-wrap gap-3">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {categories.map((category) => {
-                const categoryColors: Record<string, string> = {
-                  'All': 'bg-violet-500 text-white',
-                  'Gym': 'bg-red-500 text-white',
-                  'Yoga': 'bg-green-500 text-white',
-                  'Pilates': 'bg-blue-500 text-white',
-                  'CrossFit': 'bg-orange-500 text-white',
-                  'Sports Club': 'bg-yellow-500 text-gray-900',
-                  'Personal Trainer': 'bg-pink-500 text-white',
-                  'Dance': 'bg-fuchsia-500 text-white',
-                  'Martial Arts': 'bg-red-700 text-white',
-                  'Boxing': 'bg-rose-600 text-white',
-                  'Kickboxing': 'bg-red-400 text-white',
-                  'Swimming': 'bg-cyan-500 text-white',
-                  'Cycling': 'bg-amber-500 text-white',
-                  'Barre': 'bg-purple-400 text-white',
-                  'Climbing': 'bg-stone-500 text-white',
-                  'Tennis': 'bg-lime-500 text-white',
-                  'Pickleball': 'bg-lime-400 text-gray-900',
-                  'Weightlifting': 'bg-gray-600 text-white',
-                  'Gymnastics': 'bg-indigo-500 text-white',
-                  'Rowing': 'bg-blue-700 text-white',
-                  'Running': 'bg-emerald-500 text-white',
-                  'Stretching': 'bg-violet-300 text-gray-900',
-                  'Sauna & Recovery': 'bg-orange-700 text-white',
-                  'Wellness': 'bg-teal-500 text-white',
-                  'Rehabilitation': 'bg-sky-600 text-white',
+                const categoryMeta: Record<string, { emoji: string; color: string; active: string }> = {
+                  'All':              { emoji: '🏅', color: 'border-violet-900/30 text-gray-300 hover:border-violet-500 hover:text-white', active: 'border-violet-500 bg-violet-500/20 text-violet-300' },
+                  'Gym':              { emoji: '💪', color: 'border-violet-900/30 text-gray-300 hover:border-red-500 hover:text-white', active: 'border-red-500 bg-red-500/20 text-red-300' },
+                  'Yoga':             { emoji: '🧘', color: 'border-violet-900/30 text-gray-300 hover:border-green-500 hover:text-white', active: 'border-green-500 bg-green-500/20 text-green-300' },
+                  'Pilates':          { emoji: '🤸', color: 'border-violet-900/30 text-gray-300 hover:border-blue-500 hover:text-white', active: 'border-blue-500 bg-blue-500/20 text-blue-300' },
+                  'CrossFit':         { emoji: '🏋️', color: 'border-violet-900/30 text-gray-300 hover:border-orange-500 hover:text-white', active: 'border-orange-500 bg-orange-500/20 text-orange-300' },
+                  'Sports Club':      { emoji: '⚽', color: 'border-violet-900/30 text-gray-300 hover:border-yellow-500 hover:text-white', active: 'border-yellow-500 bg-yellow-500/20 text-yellow-300' },
+                  'Personal Trainer': { emoji: '🎯', color: 'border-violet-900/30 text-gray-300 hover:border-pink-500 hover:text-white', active: 'border-pink-500 bg-pink-500/20 text-pink-300' },
+                  'Dance':            { emoji: '💃', color: 'border-violet-900/30 text-gray-300 hover:border-fuchsia-500 hover:text-white', active: 'border-fuchsia-500 bg-fuchsia-500/20 text-fuchsia-300' },
+                  'Martial Arts':     { emoji: '🥋', color: 'border-violet-900/30 text-gray-300 hover:border-red-700 hover:text-white', active: 'border-red-700 bg-red-700/20 text-red-300' },
+                  'Boxing':           { emoji: '🥊', color: 'border-violet-900/30 text-gray-300 hover:border-rose-500 hover:text-white', active: 'border-rose-500 bg-rose-500/20 text-rose-300' },
+                  'Kickboxing':       { emoji: '🦵', color: 'border-violet-900/30 text-gray-300 hover:border-red-400 hover:text-white', active: 'border-red-400 bg-red-400/20 text-red-300' },
+                  'Swimming':         { emoji: '🏊', color: 'border-violet-900/30 text-gray-300 hover:border-cyan-500 hover:text-white', active: 'border-cyan-500 bg-cyan-500/20 text-cyan-300' },
+                  'Cycling':          { emoji: '🚴', color: 'border-violet-900/30 text-gray-300 hover:border-amber-500 hover:text-white', active: 'border-amber-500 bg-amber-500/20 text-amber-300' },
+                  'Barre':            { emoji: '🩰', color: 'border-violet-900/30 text-gray-300 hover:border-purple-400 hover:text-white', active: 'border-purple-400 bg-purple-400/20 text-purple-300' },
+                  'Climbing':         { emoji: '🧗', color: 'border-violet-900/30 text-gray-300 hover:border-stone-400 hover:text-white', active: 'border-stone-400 bg-stone-400/20 text-stone-300' },
+                  'Tennis':           { emoji: '🎾', color: 'border-violet-900/30 text-gray-300 hover:border-lime-500 hover:text-white', active: 'border-lime-500 bg-lime-500/20 text-lime-300' },
+                  'Pickleball':       { emoji: '🏓', color: 'border-violet-900/30 text-gray-300 hover:border-lime-400 hover:text-white', active: 'border-lime-400 bg-lime-400/20 text-lime-300' },
+                  'Weightlifting':    { emoji: '🏋️', color: 'border-violet-900/30 text-gray-300 hover:border-gray-400 hover:text-white', active: 'border-gray-400 bg-gray-400/20 text-gray-300' },
+                  'Gymnastics':       { emoji: '🤼', color: 'border-violet-900/30 text-gray-300 hover:border-indigo-500 hover:text-white', active: 'border-indigo-500 bg-indigo-500/20 text-indigo-300' },
+                  'Rowing':           { emoji: '🚣', color: 'border-violet-900/30 text-gray-300 hover:border-blue-700 hover:text-white', active: 'border-blue-700 bg-blue-700/20 text-blue-300' },
+                  'Running':          { emoji: '🏃', color: 'border-violet-900/30 text-gray-300 hover:border-emerald-500 hover:text-white', active: 'border-emerald-500 bg-emerald-500/20 text-emerald-300' },
+                  'Stretching':       { emoji: '🙆', color: 'border-violet-900/30 text-gray-300 hover:border-violet-300 hover:text-white', active: 'border-violet-300 bg-violet-300/20 text-violet-200' },
+                  'Sauna & Recovery': { emoji: '🧖', color: 'border-violet-900/30 text-gray-300 hover:border-orange-700 hover:text-white', active: 'border-orange-700 bg-orange-700/20 text-orange-300' },
+                  'Wellness':         { emoji: '🌿', color: 'border-violet-900/30 text-gray-300 hover:border-teal-500 hover:text-white', active: 'border-teal-500 bg-teal-500/20 text-teal-300' },
+                  'Rehabilitation':   { emoji: '🩺', color: 'border-violet-900/30 text-gray-300 hover:border-sky-500 hover:text-white', active: 'border-sky-500 bg-sky-500/20 text-sky-300' },
                 };
-                const activeColor = categoryColors[category] || 'bg-violet-500 text-white';
-                
+                const meta = categoryMeta[category] || categoryMeta['All'];
+                const isActive = selectedCategory === category;
+
                 return (
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${
-                      selectedCategory === category
-                        ? activeColor
-                        : 'bg-[#1e1e2d] text-white hover:bg-gray-700 border border-violet-900/30'
+                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+                      isActive ? meta.active : meta.color
                     }`}
                   >
-                    {category}
+                    <span className="text-base leading-none">{meta.emoji}</span>
+                    <span>{category}</span>
+                    {isActive && selectedCategory !== 'All' && (
+                      <span className="ml-1 text-xs opacity-70">
+                        ({filteredLocations.length})
+                      </span>
+                    )}
                   </button>
                 );
               })}
