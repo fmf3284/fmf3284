@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     // Password correct — send 2FA OTP before creating session
     const cryptoMod = await import('crypto');
     const otp = String(cryptoMod.randomInt(100000, 999999));
-    const otpExpires = new Date(Date.now() + 60 * 1000); // 1 minute
+    const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.user.update({
       where: { id: user.id },
@@ -166,10 +166,10 @@ export async function POST(request: NextRequest) {
       await EmailService.sendEmail({
         to: user.email,
         subject: `${otp} — Your Find My Fitness verification code`,
-        html: `<div style="font-family:sans-serif;background:#0f0f1a;padding:40px 20px;"><div style="max-width:500px;margin:0 auto;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;overflow:hidden;"><div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);padding:30px;text-align:center;"><h1 style="color:#fff;margin:0;font-size:24px;">🔐 Verification Code</h1></div><div style="padding:30px;text-align:center;"><p style="color:#a0a0b0;margin:0 0 20px;">Hi ${user.name || 'there'}, your sign-in code is:</p><div style="background:#0f0f1a;border:2px solid #8b5cf6;border-radius:12px;padding:24px;margin:0 0 20px;"><p style="color:#fff;font-size:44px;font-weight:800;letter-spacing:10px;margin:0;font-family:monospace;">${otp}</p></div><p style="color:#f87171;font-size:14px;margin:0;">⏱️ Expires in <strong>1 minute</strong>. Never share this code.</p></div><div style="background:rgba(139,92,246,0.1);padding:16px;text-align:center;border-top:1px solid rgba(139,92,246,0.2);"><p style="color:#606070;font-size:12px;margin:0;">© ${new Date().getFullYear()} Find My Fitness</p></div></div></div>`,
+        html: `<div style="font-family:sans-serif;background:#0f0f1a;padding:40px 20px;"><div style="max-width:500px;margin:0 auto;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;overflow:hidden;"><div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);padding:30px;text-align:center;"><h1 style="color:#fff;margin:0;font-size:24px;">🔐 Verification Code</h1></div><div style="padding:30px;text-align:center;"><p style="color:#a0a0b0;margin:0 0 20px;">Hi ${user.name || 'there'}, your sign-in code is:</p><div style="background:#0f0f1a;border:2px solid #8b5cf6;border-radius:12px;padding:24px;margin:0 0 20px;"><p style="color:#fff;font-size:44px;font-weight:800;letter-spacing:10px;margin:0;font-family:monospace;">${otp}</p></div><p style="color:#f87171;font-size:14px;margin:0;">⏱️ Expires in <strong>15 minutes</strong>. Never share this code.</p></div><div style="background:rgba(139,92,246,0.1);padding:16px;text-align:center;border-top:1px solid rgba(139,92,246,0.2);"><p style="color:#606070;font-size:12px;margin:0;">© ${new Date().getFullYear()} Find My Fitness</p></div></div></div>`,
         text: `Your Find My Fitness verification code is: ${otp}
 
-Expires in 1 minute. Do not share it.`,
+Expires in 15 minutes. Do not share it.`,
       });
     } catch (emailError) {
       console.error('Failed to send 2FA OTP:', emailError);
