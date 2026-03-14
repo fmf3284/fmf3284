@@ -1,318 +1,343 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+type Step = 'credentials' | '2fa' | 'reset-email' | 'reset-2fa';
+
 export default function LoginPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [step, setStep] = useState<Step>('credentials');
+  const [pendingEmail, setPendingEmail] = useState('');
+
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  
-  // Password reset modal state
-  const [showResetModal, setShowResetModal] = useState(false);
+
+  const [otp, setOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
+  const [countdown, setCountdown] = useState(900);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   const [resetEmail, setResetEmail] = useState('');
-  const [resetLoading, setResetLoading] = useState(false);
+  const [resetOtp, setResetOtp] = useState('');
   const [resetError, setResetError] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  useEffect(() => {
+    if (step === '2fa' || step === 'reset-2fa') {
+      setCountdown(900);
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) { clearInterval(timerRef.current!); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [step]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setRemainingAttempts(null);
-    setLockedUntil(null);
     setLoading(true);
-
     try {
-      const response = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include',
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Handle lockout
-        if (data.lockedUntil) {
-          setLockedUntil(data.lockedUntil);
-          setError(data.error);
-        } else {
-          setError(data.error || 'Login failed');
-          if (typeof data.remainingAttempts === 'number') {
-            setRemainingAttempts(data.remainingAttempts);
-          }
-        }
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.lockedUntil) setLockedUntil(data.lockedUntil);
+        setError(data.error || 'Login failed');
+        if (typeof data.remainingAttempts === 'number') setRemainingAttempts(data.remainingAttempts);
         return;
       }
-
-      // Redirect to dashboard on success
-      router.push(data.redirect || '/dashboard');
-      router.refresh();
-    } catch (err: any) {
-      setError('An error occurred. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+      if (data.requires2FA) { setPendingEmail(data.email); setStep('2fa'); }
+    } catch { setError('An error occurred. Please try again.'); }
+    finally { setLoading(false); }
   };
 
-  // Handle super admin password reset
-  const handlePasswordReset = async (e: React.FormEvent) => {
+  const handleVerify2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError('');
+    setOtpLoading(true);
+    try {
+      const res = await fetch('/api/auth/2fa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pendingEmail, otp }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) { setOtpError(data.error || 'Verification failed'); return; }
+      router.push(data.redirect || '/dashboard');
+      router.refresh();
+    } catch { setOtpError('An error occurred. Please try again.'); }
+    finally { setOtpLoading(false); }
+  };
+
+  const handleResendOtp = async () => {
+    setResendLoading(true);
+    setResendSuccess('');
+    setOtpError('');
+    try {
+      await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+        credentials: 'include',
+      });
+      setOtp('');
+      setResendSuccess('New code sent!');
+      setCountdown(900);
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setCountdown(prev => { if (prev <= 1) { clearInterval(timerRef.current!); return 0; } return prev - 1; });
+      }, 1000);
+      setTimeout(() => setResendSuccess(''), 3000);
+    } catch { setOtpError('Failed to resend. Please try again.'); }
+    finally { setResendLoading(false); }
+  };
+
+  const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetError('');
-    setResetSuccess('');
     setResetLoading(true);
-
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const res = await fetch('/api/auth/2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, purpose: 'reset' }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setResetError(data.error || 'Something went wrong'); return; }
+      setStep('reset-2fa');
+    } catch { setResetError('An error occurred. Please try again.'); }
+    finally { setResetLoading(false); }
+  };
+
+  const handleResetVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    setResetLoading(true);
+    try {
+      const verifyRes = await fetch('/api/auth/2fa', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, otp: resetOtp, purpose: 'reset' }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) { setResetError(verifyData.error || 'Invalid code'); return; }
+
+      const resetRes = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resetEmail }),
       });
+      const resetData = await resetRes.json();
+      if (!resetRes.ok) { setResetError(resetData.error || 'Failed to send reset email'); return; }
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setResetError(data.error || 'Something went wrong. Please try again.');
-        return;
-      }
-
-      setResetSuccess('Check your email! A temporary password has been sent.');
-      setTimeout(() => {
-        setShowResetModal(false);
-        setResetSuccess('');
-        setResetEmail('');
-      }, 3000);
-    } catch (err: any) {
-      setResetError('An error occurred. Please try again.');
-    } finally {
-      setResetLoading(false);
-    }
+      setResetSuccess('Temporary password sent to your email! Check your inbox.');
+      setTimeout(() => { setStep('credentials'); setResetEmail(''); setResetOtp(''); setResetSuccess(''); setResetError(''); }, 4000);
+    } catch { setResetError('An error occurred. Please try again.'); }
+    finally { setResetLoading(false); }
   };
 
-  // Calculate lockout countdown
   const getLockoutMessage = () => {
     if (!lockedUntil) return null;
-    const lockTime = new Date(lockedUntil);
-    const now = new Date();
-    const diffMs = lockTime.getTime() - now.getTime();
-    if (diffMs <= 0) {
-      setLockedUntil(null);
-      return null;
-    }
+    const diffMs = new Date(lockedUntil).getTime() - Date.now();
+    if (diffMs <= 0) { setLockedUntil(null); return null; }
     const minutes = Math.ceil(diffMs / 1000 / 60);
     return `Account locked. Try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`;
   };
 
   return (
     <main className="content-wrapper">
-      {/* Hero Section */}
       <section className="splash-screen">
         <h1>Welcome Back</h1>
         <p>Sign in to access your fitness dashboard</p>
       </section>
 
-      {/* Login Form Section */}
       <section className="py-16 bg-gradient-to-b from-gray-900 to-gray-800">
         <div className="max-w-md mx-auto px-4">
           <div className="bg-gray-800 rounded-lg p-8 border border-gray-700">
-            <h2 className="text-2xl font-bold text-white text-center mb-8">
-              Sign In
-            </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Error Message */}
-              {error && (
-                <div className="bg-red-900/50 border border-red-700 rounded-lg p-4">
-                  <p className="text-red-200 text-sm">{error}</p>
-                  {remainingAttempts !== null && remainingAttempts > 0 && (
-                    <p className="text-yellow-300 text-xs mt-2">
-                      ⚠️ {remainingAttempts} attempt{remainingAttempts !== 1 ? 's' : ''} remaining before lockout
-                    </p>
+            {step === 'credentials' && (
+              <>
+                <h2 className="text-2xl font-bold text-white text-center mb-8">Sign In</h2>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {error && (
+                    <div className="bg-red-900/50 border border-red-700 rounded-lg p-4">
+                      <p className="text-red-200 text-sm">{error}</p>
+                      {remainingAttempts !== null && remainingAttempts > 0 && (
+                        <p className="text-yellow-300 text-xs mt-2">Warning: {remainingAttempts} attempt{remainingAttempts !== 1 ? 's' : ''} remaining before lockout</p>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-
-              {/* Success Message */}
-              {success && (
-                <div className="bg-green-900/50 border border-green-700 rounded-lg p-4">
-                  <p className="text-green-200 text-sm">{success}</p>
-                </div>
-              )}
-
-              {/* Lockout Warning */}
-              {lockedUntil && (
-                <div className="bg-orange-900/50 border border-orange-700 rounded-lg p-4">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <p className="text-orange-200 text-sm font-medium">{getLockoutMessage()}</p>
+                  {lockedUntil && (
+                    <div className="bg-orange-900/50 border border-orange-700 rounded-lg p-4">
+                      <p className="text-orange-200 text-sm font-medium">Account locked: {getLockoutMessage()}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-white font-medium mb-2">Email Address <span className="text-violet-500">*</span></label>
+                    <input type="email" name="email" value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="your@email.com" required autoComplete="email" disabled={!!lockedUntil}
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all disabled:opacity-50" />
                   </div>
-                </div>
-              )}
-
-              {/* Email */}
-              <div>
-                <label htmlFor="email" className="block text-white font-medium mb-2">
-                  Email Address <span className="text-violet-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="your@email.com"
-                  required
-                  autoComplete="email"
-                  disabled={!!lockedUntil}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all disabled:opacity-50"
-                />
-              </div>
-
-              {/* Password */}
-              <div>
-                <label htmlFor="password" className="block text-white font-medium mb-2">
-                  Password <span className="text-violet-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Enter your password"
-                    required
-                    autoComplete="current-password"
-                    disabled={!!lockedUntil}
-                    className="w-full px-4 py-3 pr-11 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all disabled:opacity-50"
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors" tabIndex={-1}>
-                    {showPassword ? (<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>) : (<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>)}
+                  <div>
+                    <label className="block text-white font-medium mb-2">Password <span className="text-violet-500">*</span></label>
+                    <input type="password" name="password" value={formData.password}
+                      onChange={e => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Enter your password" required autoComplete="current-password" disabled={!!lockedUntil}
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all disabled:opacity-50" />
+                  </div>
+                  <div className="text-right">
+                    <button type="button"
+                      onClick={() => { setStep('reset-email'); setResetEmail(formData.email || ''); setResetError(''); setResetSuccess(''); }}
+                      className="text-violet-400 hover:text-violet-300 text-sm font-medium">
+                      Forgot Password?
+                    </button>
+                  </div>
+                  <button type="submit" disabled={loading || !!lockedUntil}
+                    className="w-full px-8 py-4 bg-violet-500 hover:bg-violet-600 text-gray-900 font-bold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                    {loading ? 'Signing in...' : lockedUntil ? 'Account Locked' : 'Sign In'}
                   </button>
+                  <div className="text-center">
+                    <p className="text-gray-400">Don't have an account?{' '}
+                      <Link href="/register" className="text-violet-500 hover:text-violet-600 font-semibold">Create one here</Link>
+                    </p>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {step === '2fa' && (
+              <>
+                <div className="text-center mb-6">
+                  <div className="text-5xl mb-3">📧</div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Check Your Email</h2>
+                  <p className="text-gray-400 text-sm">We sent a 6-digit code to</p>
+                  <p className="text-violet-400 font-semibold">{pendingEmail}</p>
                 </div>
-              </div>
+                <form onSubmit={handleVerify2FA} className="space-y-5">
+                  {otpError && <div className="bg-red-900/50 border border-red-700 rounded-lg p-3"><p className="text-red-200 text-sm">{otpError}</p></div>}
+                  {resendSuccess && <div className="bg-green-900/50 border border-green-700 rounded-lg p-3"><p className="text-green-200 text-sm">{resendSuccess}</p></div>}
+                  <div>
+                    <label className="block text-white font-medium mb-2 text-center">Verification Code</label>
+                    <input type="text" value={otp}
+                      onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpError(''); }}
+                      placeholder="000000" maxLength={6} required autoFocus
+                      className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-3xl font-mono tracking-widest placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all" />
+                  </div>
+                  <div className="text-center">
+                    {countdown > 0
+                      ? <p className="text-gray-500 text-sm">Expires in <span className={`font-bold ${countdown <= 15 ? 'text-red-400' : 'text-violet-400'}`}>{Math.floor(countdown/60)}:{String(countdown%60).padStart(2,'0')}</span></p>
+                      : <p className="text-red-400 text-sm font-medium">Code expired</p>}
+                  </div>
+                  <button type="submit" disabled={otpLoading || otp.length !== 6 || countdown === 0}
+                    className="w-full px-8 py-4 bg-violet-500 hover:bg-violet-600 text-gray-900 font-bold text-lg rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    {otpLoading ? 'Verifying...' : 'Verify & Sign In'}
+                  </button>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={handleResendOtp} disabled={resendLoading || countdown > 0}
+                      className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      {resendLoading ? 'Sending...' : countdown > 0 ? `Resend in ${Math.floor(countdown/60)}m ${countdown%60}s` : 'Resend Code'}
+                    </button>
+                    <button type="button" onClick={() => { setStep('credentials'); setOtp(''); setOtpError(''); }}
+                      className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-all">
+                      Back
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
 
-              {/* Forgot Password Link - Always visible */}
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowResetModal(true);
-                    setResetEmail(formData.email || '');
-                    setResetError('');
-                    setResetSuccess('');
-                  }}
-                  className="text-violet-400 hover:text-violet-300 text-sm font-medium"
-                >
-                  Forgot Password?
-                </button>
-              </div>
+            {step === 'reset-email' && (
+              <>
+                <div className="text-center mb-6">
+                  <div className="text-5xl mb-3">🔐</div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Reset Password</h2>
+                  <p className="text-gray-400 text-sm">We'll verify it's you first by sending a code to your email.</p>
+                </div>
+                <form onSubmit={handleResetRequest} className="space-y-5">
+                  {resetError && <div className="bg-red-900/50 border border-red-700 rounded-lg p-3"><p className="text-red-200 text-sm">{resetError}</p></div>}
+                  <div>
+                    <label className="block text-white font-medium mb-2">Email Address</label>
+                    <input type="email" value={resetEmail}
+                      onChange={e => { setResetEmail(e.target.value); setResetError(''); }}
+                      placeholder="your@email.com" required
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all" />
+                  </div>
+                  <button type="submit" disabled={resetLoading || !resetEmail}
+                    className="w-full px-6 py-4 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    {resetLoading ? 'Sending Code...' : 'Send Verification Code'}
+                  </button>
+                  <button type="button" onClick={() => { setStep('credentials'); setResetError(''); }}
+                    className="w-full px-6 py-2 text-gray-400 hover:text-white text-sm transition-all">
+                    Back to Sign In
+                  </button>
+                </form>
+              </>
+            )}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading || !!lockedUntil}
-                className="w-full px-8 py-4 bg-violet-500 hover:bg-violet-600 text-gray-900 font-bold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                {loading ? 'Signing in...' : lockedUntil ? 'Account Locked' : 'Sign In'}
-              </button>
+            {step === 'reset-2fa' && (
+              <>
+                <div className="text-center mb-6">
+                  <div className="text-5xl mb-3">📧</div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Verify Your Identity</h2>
+                  <p className="text-gray-400 text-sm">Enter the code sent to</p>
+                  <p className="text-violet-400 font-semibold">{resetEmail}</p>
+                </div>
+                {resetSuccess ? (
+                  <div className="bg-green-900/50 border border-green-700 rounded-lg p-4 text-center">
+                    <p className="text-green-200">✅ {resetSuccess}</p>
+                    <p className="text-gray-400 text-sm mt-2">Redirecting to login...</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleResetVerify} className="space-y-5">
+                    {resetError && <div className="bg-red-900/50 border border-red-700 rounded-lg p-3"><p className="text-red-200 text-sm">{resetError}</p></div>}
+                    <div>
+                      <label className="block text-white font-medium mb-2 text-center">Verification Code</label>
+                      <input type="text" value={resetOtp}
+                        onChange={e => { setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setResetError(''); }}
+                        placeholder="000000" maxLength={6} required autoFocus
+                        className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-3xl font-mono tracking-widest placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all" />
+                    </div>
+                    <div className="text-center">
+                      {countdown > 0
+                        ? <p className="text-gray-500 text-sm">Expires in <span className={`font-bold ${countdown <= 15 ? 'text-red-400' : 'text-violet-400'}`}>{Math.floor(countdown/60)}:{String(countdown%60).padStart(2,'0')}</span></p>
+                        : <p className="text-red-400 text-sm">Code expired — <button type="button" onClick={() => setStep('reset-email')} className="text-violet-400 underline">request a new one</button></p>}
+                    </div>
+                    <button type="submit" disabled={resetLoading || resetOtp.length !== 6 || countdown === 0}
+                      className="w-full px-6 py-4 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      {resetLoading ? 'Verifying...' : 'Verify & Send Temp Password'}
+                    </button>
+                    <button type="button" onClick={() => { setStep('reset-email'); setResetOtp(''); setResetError(''); }}
+                      className="w-full px-6 py-2 text-gray-400 hover:text-white text-sm transition-all">
+                      Use different email
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
 
-              {/* Register Link */}
-              <div className="text-center">
-                <p className="text-gray-400">
-                  Don't have an account?{' '}
-                  <Link href="/register" className="text-violet-500 hover:text-violet-600 font-semibold">
-                    Create one here
-                  </Link>
-                </p>
-              </div>
-            </form>
           </div>
         </div>
       </section>
-
-      {/* Password Reset Modal */}
-      {showResetModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-violet-900/30">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-bold text-white">🔐 Forgot Password</h3>
-              <button
-                onClick={() => { setShowResetModal(false); setResetError(''); setResetSuccess(''); setResetEmail(''); }}
-                className="text-gray-400 hover:text-white text-xl"
-              >✕</button>
-            </div>
-
-            <p className="text-gray-400 text-sm mb-5">
-              Enter your email address and we'll send you a temporary password to log in with.
-            </p>
-
-            {resetSuccess && (
-              <div className="bg-green-900/50 border border-green-700 rounded-lg p-3 mb-4">
-                <p className="text-green-200 text-sm">✅ {resetSuccess}</p>
-              </div>
-            )}
-
-            {resetError && (
-              <div className="bg-red-900/50 border border-red-700 rounded-lg p-3 mb-4">
-                <p className="text-red-200 text-sm">❌ {resetError}</p>
-              </div>
-            )}
-
-            {!resetSuccess && (
-              <form onSubmit={handlePasswordReset} className="space-y-4">
-                <div>
-                  <label className="block text-white font-medium mb-2">Email Address</label>
-                  <input
-                    type="email"
-                    value={resetEmail}
-                    onChange={(e) => { setResetEmail(e.target.value); setResetError(''); }}
-                    placeholder="Enter your email address"
-                    required
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={resetLoading || !resetEmail}
-                  className="w-full px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {resetLoading ? '📨 Sending...' : '📨 Send Temporary Password'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setShowResetModal(false); setResetEmail(''); setResetError(''); }}
-                  className="w-full px-6 py-2 text-gray-400 hover:text-white text-sm transition-all"
-                >
-                  Cancel
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </main>
   );
 }
