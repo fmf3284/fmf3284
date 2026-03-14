@@ -1,8 +1,8 @@
 'use client';
+import { useToast } from '@/components/Toast';
 
 import { useEffect, useState } from 'react';
 import { apiGet, apiDelete } from '@/lib/api';
-import { useToast } from '@/components/Toast';
 
 interface Location {
   id: string;
@@ -16,8 +16,8 @@ interface Location {
 }
 
 export default function AdminLocations() {
-  const [locations, setLocations] = useState<Location[]>([]);
   const toast = useToast();
+    const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
