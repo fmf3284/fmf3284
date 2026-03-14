@@ -46,7 +46,6 @@ export default function NotFound() {
             }}>
               404
             </p>
-            {/* Emoji floating above */}
             <div style={{
               position: 'absolute',
               top: '-20px',
@@ -74,43 +73,20 @@ export default function NotFound() {
             lineHeight: 1.6,
             margin: '0 0 36px',
           }}>
-            The page you're looking for doesn't exist or has been moved. Let's get you back on track.
+            The page you&apos;re looking for doesn&apos;t exist or has been moved. Let&apos;s get you back on track.
           </p>
 
-          {/* Action buttons */}
+          {/* Action buttons — pure CSS hover via className */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link
               href="/"
-              style={{
-                display: 'inline-block',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                color: '#ffffff',
-                textDecoration: 'none',
-                padding: '14px 32px',
-                borderRadius: '10px',
-                fontWeight: 700,
-                fontSize: '15px',
-                transition: 'opacity 0.2s, transform 0.2s',
-              }}
-              onMouseEnter={e => { (e.target as HTMLElement).style.opacity = '0.9'; (e.target as HTMLElement).style.transform = 'translateY(-1px)'; }}
-              onMouseLeave={e => { (e.target as HTMLElement).style.opacity = '1'; (e.target as HTMLElement).style.transform = 'translateY(0)'; }}
+              className="not-found-btn-primary"
             >
               🏠 Go Home
             </Link>
             <Link
               href="/locations"
-              style={{
-                display: 'inline-block',
-                background: 'transparent',
-                color: '#a78bfa',
-                textDecoration: 'none',
-                padding: '14px 32px',
-                borderRadius: '10px',
-                fontWeight: 600,
-                fontSize: '15px',
-                border: '1px solid rgba(139,92,246,0.4)',
-                transition: 'border-color 0.2s, color 0.2s',
-              }}
+              className="not-found-btn-outline"
             >
               🔍 Find Locations
             </Link>
@@ -129,13 +105,7 @@ export default function NotFound() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  style={{
-                    color: '#8b5cf6',
-                    textDecoration: 'none',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    transition: 'color 0.2s',
-                  }}
+                  className="not-found-quick-link"
                 >
                   {link.label}
                 </Link>
@@ -149,6 +119,48 @@ export default function NotFound() {
         @keyframes float {
           0%, 100% { transform: translateX(-50%) translateY(0px); }
           50% { transform: translateX(-50%) translateY(-12px); }
+        }
+        .not-found-btn-primary {
+          display: inline-block;
+          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+          color: #ffffff;
+          text-decoration: none;
+          padding: 14px 32px;
+          border-radius: 10px;
+          font-weight: 700;
+          font-size: 15px;
+          transition: opacity 0.2s, transform 0.2s;
+        }
+        .not-found-btn-primary:hover {
+          opacity: 0.9;
+          transform: translateY(-2px);
+        }
+        .not-found-btn-outline {
+          display: inline-block;
+          background: transparent;
+          color: #a78bfa;
+          text-decoration: none;
+          padding: 14px 32px;
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 15px;
+          border: 1px solid rgba(139,92,246,0.4);
+          transition: border-color 0.2s, color 0.2s, transform 0.2s;
+        }
+        .not-found-btn-outline:hover {
+          border-color: rgba(139,92,246,0.8);
+          color: #c4b5fd;
+          transform: translateY(-2px);
+        }
+        .not-found-quick-link {
+          color: #8b5cf6;
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 500;
+          transition: color 0.2s;
+        }
+        .not-found-quick-link:hover {
+          color: #a78bfa;
         }
       `}</style>
     </main>
