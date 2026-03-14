@@ -1,4 +1,5 @@
 'use client';
+import { useToast } from '@/components/Toast';
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -61,7 +62,8 @@ export default function AdminProfileView() {
   const params = useParams();
   const userId = params.id as string;
   
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const toast = useToast();
+    const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -160,10 +162,10 @@ export default function AdminProfileView() {
         await loadProfile();
         setIsEditing(false);
       } else {
-        alert('Failed to save profile');
+        toast.error('Failed to save profile');
       }
     } catch (err) {
-      alert('Failed to save profile');
+      toast.error('Failed to save profile');
     } finally {
       setUpdating(false);
     }
@@ -192,10 +194,10 @@ export default function AdminProfileView() {
       if (response.ok) {
         await loadProfile();
       } else {
-        alert('Failed to hide review');
+        toast.error('Failed to hide review');
       }
     } catch (err) {
-      alert('Failed to hide review');
+      toast.error('Failed to hide review');
     } finally {
       setUpdating(false);
     }
@@ -213,10 +215,10 @@ export default function AdminProfileView() {
       if (response.ok) {
         await loadProfile();
       } else {
-        alert('Failed to show review');
+        toast.error('Failed to show review');
       }
     } catch (err) {
-      alert('Failed to show review');
+      toast.error('Failed to show review');
     } finally {
       setUpdating(false);
     }
@@ -234,10 +236,10 @@ export default function AdminProfileView() {
       if (response.ok) {
         await loadProfile();
       } else {
-        alert('Failed to delete review');
+        toast.error('Failed to delete review');
       }
     } catch (err) {
-      alert('Failed to delete review');
+      toast.error('Failed to delete review');
     } finally {
       setUpdating(false);
     }
