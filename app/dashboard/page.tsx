@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import LogoutButton from '@/components/LogoutButton';
 import { apiGet } from '@/lib/api';
+import { SkeletonDashboard } from '@/components/Skeleton';
 
 interface SavedLocation {
   id: string;
