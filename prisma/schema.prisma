@@ -33,6 +33,12 @@ model User {
   lastActiveAt  DateTime?
   loginCount    Int      @default(0)
   mustChangePassword Boolean @default(false)
+
+  // 2FA
+  otpCode       String?
+  otpExpires    DateTime?
+  otpPurpose    String?   // "login" or "reset"
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
