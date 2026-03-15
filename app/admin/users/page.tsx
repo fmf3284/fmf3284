@@ -525,24 +525,26 @@ export default function AdminUsers() {
                               )}
                             </div>
                           ) : (
-                            <span className={`px-2 py-1 rounded text-xs font-medium block w-fit ${
-                              user.status === 'suspended' ? 'bg-red-500/20 text-red-400' :
-                              user.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
-                              'bg-green-500/20 text-green-400'
-                            }`}>
-                              {user.status === 'suspended' ? '🚫 Suspended' : 
-                               user.status === 'pending' ? '⏳ Pending' : '✓ Active'}
-                            </span>
-                            {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
-                              <span className="px-2 py-1 rounded text-xs font-medium block w-fit bg-red-900/40 text-red-300 mt-1">
-                                {(user.failedLoginCount || 0) >= 20 ? '🔒 Permanently locked' : `🔒 Locked: ${new Date(user.lockedUntil).toLocaleString()}`}
+                            <>
+                              <span className={`px-2 py-1 rounded text-xs font-medium block w-fit ${
+                                user.status === 'suspended' ? 'bg-red-500/20 text-red-400' :
+                                user.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                                'bg-green-500/20 text-green-400'
+                              }`}>
+                                {user.status === 'suspended' ? '🚫 Suspended' : 
+                                 user.status === 'pending' ? '⏳ Pending' : '✓ Active'}
                               </span>
-                            )}
-                            {(user.failedLoginCount || 0) > 0 && !(user.lockedUntil && new Date(user.lockedUntil) > new Date()) && (
-                              <span className="px-2 py-1 rounded text-xs font-medium block w-fit bg-yellow-900/30 text-yellow-400 mt-1">
-                                ⚠️ {user.failedLoginCount} failed login{user.failedLoginCount !== 1 ? 's' : ''}
-                              </span>
-                            )}
+                              {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                                <span className="px-2 py-1 rounded text-xs font-medium block w-fit bg-red-900/40 text-red-300 mt-1">
+                                  {(user.failedLoginCount || 0) >= 20 ? '🔒 Permanently locked' : `🔒 Locked: ${new Date(user.lockedUntil).toLocaleString()}`}
+                                </span>
+                              )}
+                              {(user.failedLoginCount || 0) > 0 && !(user.lockedUntil && new Date(user.lockedUntil) > new Date()) && (
+                                <span className="px-2 py-1 rounded text-xs font-medium block w-fit bg-yellow-900/30 text-yellow-400 mt-1">
+                                  ⚠️ {user.failedLoginCount} failed login{user.failedLoginCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </>
                           )}
                           {/* Email Verification Badge (only for non-deleted) */}
                           {!user.deletedAt && (
