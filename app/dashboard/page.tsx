@@ -18,6 +18,7 @@ interface SavedLocation {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ name: string; email: string; role?: string; newsletterSubscribed?: boolean } | null>(null);
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
 
@@ -51,6 +52,31 @@ export default function DashboardPage() {
 
     checkAuth();
   }, [router]);
+
+  const handleNewsletterToggle = async () => {
+    if (!user) return;
+    setNewsletterLoading(true);
+    try {
+      if (user.newsletterSubscribed) {
+        // Unsubscribe
+        const res = await fetch('/api/newsletter', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email }),
+        });
+        if (res.ok) setUser({ ...user, newsletterSubscribed: false });
+      } else {
+        // Subscribe
+        const res = await fetch('/api/newsletter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email, name: user.name, source: 'dashboard' }),
+        });
+        if (res.ok) setUser({ ...user, newsletterSubscribed: true });
+      }
+    } catch { /* non-blocking */ }
+    finally { setNewsletterLoading(false); }
+  };
 
   if (loading) {
     return (
@@ -107,6 +133,36 @@ export default function DashboardPage() {
                   <p className="text-gray-400 text-sm">Email</p>
                   <p className="text-white font-semibold">{user.email}</p>
                 </div>
+              </div>
+
+              {/* Newsletter subscription row */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-700/50">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${user.newsletterSubscribed ? 'bg-emerald-600' : 'bg-gray-700'}`}>
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">Newsletter</p>
+                    <p className="text-gray-400 text-xs mt-0.5">
+                      {user.newsletterSubscribed
+                        ? '✅ Subscribed — fitness tips & deals in your inbox'
+                        : '❌ Not subscribed — you're missing out on deals!'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleNewsletterToggle}
+                  disabled={newsletterLoading}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-50 whitespace-nowrap ${
+                    user.newsletterSubscribed
+                      ? 'bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30'
+                      : 'bg-violet-600 hover:bg-violet-500 text-white'
+                  }`}
+                >
+                  {newsletterLoading ? '...' : user.newsletterSubscribed ? 'Unsubscribe' : '✉️ Subscribe'}
+                </button>
               </div>
             </div>
 
