@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { rateLimit, rateLimitPresets } from '@/server/middleware/rateLimit';
+import { EmailService } from '@/server/services/email.service';
+import crypto from 'crypto';
 import {
   verifyPassword,
   createSessionToken,
@@ -152,8 +154,7 @@ export async function POST(request: NextRequest) {
     clearLoginAttempts(bruteForceKey);
 
     // Password correct — send 2FA OTP before creating session
-    const cryptoMod = await import('crypto');
-    const otp = String(cryptoMod.randomInt(100000, 999999));
+    const otp = String(crypto.randomInt(100000, 999999));
     const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.user.update({
@@ -161,7 +162,6 @@ export async function POST(request: NextRequest) {
       data: { otpCode: otp, otpExpires, otpPurpose: 'login' },
     });
 
-    const { EmailService } = await import('@/server/services/email.service');
     try {
       await EmailService.sendEmail({
         to: user.email,
