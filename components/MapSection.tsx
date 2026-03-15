@@ -68,38 +68,86 @@ export default function MapSection() {
     mapMarkersRef.current.push(marker);
   }, []);
 
+  // Detect category from place types
+  const detectCategory = (types: string[], name: string): string => {
+    const n = name.toLowerCase();
+    if (n.includes('yoga') || n.includes('bikram') || n.includes('hot yoga')) return 'Yoga';
+    if (n.includes('pilates') || n.includes('reformer')) return 'Pilates';
+    if (n.includes('crossfit') || n.includes('cross fit')) return 'CrossFit';
+    if (n.includes('boxing') || n.includes('title box')) return 'Boxing';
+    if (n.includes('kickbox') || n.includes('muay thai')) return 'Kickboxing';
+    if (n.includes('martial art') || n.includes('karate') || n.includes('jiu jitsu') || n.includes('bjj') || n.includes('taekwondo')) return 'Martial Arts';
+    if (n.includes('swim') || n.includes('aquatic')) return 'Swimming';
+    if (n.includes('cycl') || n.includes('spin') || n.includes('soulcycle') || n.includes('cyclebar')) return 'Cycling';
+    if (n.includes('dance') || n.includes('ballet') || n.includes('zumba')) return 'Dance';
+    if (n.includes('climb') || n.includes('boulder')) return 'Climbing';
+    if (n.includes('tennis') || n.includes('racquet')) return 'Tennis';
+    if (n.includes('barre') || n.includes('pure barre')) return 'Barre';
+    if (n.includes('wellness') || n.includes('ymca') || n.includes('recreation')) return 'Wellness';
+    if (n.includes('physical therapy') || n.includes('rehab')) return 'Rehabilitation';
+    if (types.includes('gym')) return 'Gym';
+    return 'Fitness';
+  };
+
   const searchNearby = useCallback((location: { lat: number; lng: number }) => {
     if (!placesServiceRef.current) return;
     setSearching(true);
     setMarkers([]);
     clearMarkers();
 
-    const request: google.maps.places.PlaceSearchRequest = {
-      location: new google.maps.LatLng(location.lat, location.lng),
-      radius: 8000,
-      type: 'gym',
+    const allResults = new Map<string, google.maps.places.PlaceResult>();
+
+    // Search multiple keywords to get all fitness types
+    const keywords = ['gym', 'yoga studio', 'pilates', 'crossfit', 'fitness center', 'martial arts', 'boxing gym', 'dance studio', 'swimming pool fitness', 'cycling studio'];
+    let completed = 0;
+
+    const finalize = () => {
+      completed++;
+      if (completed < keywords.length) return;
+
+      setSearching(false);
+      const results = Array.from(allResults.values());
+      if (results.length === 0) return;
+
+      const newMarkers: MapMarker[] = results.map((p, i) => ({
+        id: p.place_id || String(i),
+        name: p.name || 'Unknown',
+        lat: p.geometry!.location!.lat(),
+        lng: p.geometry!.location!.lng(),
+        type: detectCategory(p.types || [], p.name || ''),
+        address: p.vicinity || '',
+        rating: p.rating,
+      }));
+
+      // Sort by rating descending
+      newMarkers.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+      setMarkers(newMarkers);
+      newMarkers.forEach(m => addMarker(m));
+
+      const bounds = new google.maps.LatLngBounds();
+      newMarkers.forEach(m => bounds.extend({ lat: m.lat, lng: m.lng }));
+      googleMapRef.current?.fitBounds(bounds);
     };
 
-    placesServiceRef.current.nearbySearch(request, (results, status) => {
-      setSearching(false);
-      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-        const newMarkers: MapMarker[] = results.slice(0, 10).map((p, i) => ({
-          id: p.place_id || String(i),
-          name: p.name || 'Unknown',
-          lat: p.geometry!.location!.lat(),
-          lng: p.geometry!.location!.lng(),
-          type: p.types?.includes('gym') ? 'Gym' : 'Fitness',
-          address: p.vicinity || '',
-          rating: p.rating,
-        }));
-        setMarkers(newMarkers);
-        newMarkers.forEach(m => addMarker(m));
-
-        // Fit map to markers
-        const bounds = new google.maps.LatLngBounds();
-        newMarkers.forEach(m => bounds.extend({ lat: m.lat, lng: m.lng }));
-        googleMapRef.current?.fitBounds(bounds);
-      }
+    keywords.forEach(keyword => {
+      placesServiceRef.current!.nearbySearch(
+        {
+          location: new google.maps.LatLng(location.lat, location.lng),
+          radius: 8000,
+          keyword,
+        },
+        (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            results.forEach(p => {
+              if (p.place_id && p.geometry?.location) {
+                allResults.set(p.place_id, p);
+              }
+            });
+          }
+          finalize();
+        }
+      );
     });
   }, [addMarker]);
 
