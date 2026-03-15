@@ -148,7 +148,7 @@ export default function DashboardPage() {
                     <p className="text-gray-400 text-xs mt-0.5">
                       {user.newsletterSubscribed
                         ? '✅ Subscribed — fitness tips & deals in your inbox'
-                        : '❌ Not subscribed — you're missing out on deals!'}
+                        : '❌ Not subscribed — you&apos;re missing out on deals!'}
                     </p>
                   </div>
                 </div>
