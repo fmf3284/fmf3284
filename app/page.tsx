@@ -248,7 +248,7 @@ export default function HomePage() {
               { number: '10K+', label: 'Fitness Locations' },
               { number: '50K+', label: 'Active Members' },
               { number: '500+', label: 'Cities Covered' },
-              { number: '4.9', label: 'Average Rating' },
+              { number: '4.9⭐', label: 'Average Rating' },
             ].map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="text-4xl md:text-6xl font-black bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent mb-2">
