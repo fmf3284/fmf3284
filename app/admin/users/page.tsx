@@ -18,6 +18,8 @@ interface User {
   daysUntilPermanentDelete?: number;
   canRestore?: boolean;
   createdAt: string;
+  failedLoginCount?: number;
+  lockedUntil?: string | null;
   _count?: {
     reviews: number;
   };
@@ -314,6 +316,16 @@ export default function AdminUsers() {
 
   const SUPER_ADMIN_EMAIL = 'moh.alneama@yahoo.com';
 
+  const handleUnlock = async (userId: string, userName: string) => {
+    if (!confirm(`Unlock account for "${userName}"? This clears all login restrictions.`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/unlock`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) { toast.success(data.message); loadUsers(); }
+      else { toast.error(data.error || 'Failed to unlock'); }
+    } catch { toast.error('Failed to unlock account'); }
+  };
+
   const handleDelete = async (userId: string, userName: string, userEmail: string) => {
     if (userId === currentUserId) {
       toast.error("You cannot delete your own account!");
@@ -521,6 +533,16 @@ export default function AdminUsers() {
                               {user.status === 'suspended' ? '🚫 Suspended' : 
                                user.status === 'pending' ? '⏳ Pending' : '✓ Active'}
                             </span>
+                            {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                              <span className="px-2 py-1 rounded text-xs font-medium block w-fit bg-red-900/40 text-red-300 mt-1">
+                                {(user.failedLoginCount || 0) >= 20 ? '🔒 Permanently locked' : `🔒 Locked: ${new Date(user.lockedUntil).toLocaleString()}`}
+                              </span>
+                            )}
+                            {(user.failedLoginCount || 0) > 0 && !(user.lockedUntil && new Date(user.lockedUntil) > new Date()) && (
+                              <span className="px-2 py-1 rounded text-xs font-medium block w-fit bg-yellow-900/30 text-yellow-400 mt-1">
+                                ⚠️ {user.failedLoginCount} failed login{user.failedLoginCount !== 1 ? 's' : ''}
+                              </span>
+                            )}
                           )}
                           {/* Email Verification Badge (only for non-deleted) */}
                           {!user.deletedAt && (
@@ -652,6 +674,16 @@ export default function AdminUsers() {
                               >
                                 🔑 Reset PW
                               </button>
+                              {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                                <button
+                                  onClick={() => handleUnlock(user.id, user.name || user.email)}
+                                  disabled={updating === user.id}
+                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded disabled:opacity-50"
+                                  title="Unlock Account"
+                                >
+                                  🔓 Unlock
+                                </button>
+                              )}
                             )}
                             <button
                               onClick={() => handleDelete(user.id, user.name || user.email, user.email)}
