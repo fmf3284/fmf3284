@@ -5,7 +5,7 @@ import { EmailService } from '@/server/services/email.service';
 
 /**
  * GET /api/admin/newsletter
- * List all subscribers
+ * List subscribers. When showAll=true, also includes registered users who never subscribed.
  */
 export async function GET(request: NextRequest) {
   const user = await getRequestUser(request);
@@ -33,8 +33,48 @@ export async function GET(request: NextRequest) {
       prisma.newsletterSubscriber.count({ where: { isActive: true } }),
     ]);
 
-    return NextResponse.json({ subscribers, total, activeCount, page, totalPages: Math.ceil(total / limit) });
+    // When showing all, also pull registered users who never subscribed
+    let nonSubscribers: any[] = [];
+    if (!activeOnly) {
+      const emailsInTable = await prisma.newsletterSubscriber.findMany({ select: { email: true } });
+      const knownEmails = emailsInTable.map((s: { email: string }) => s.email);
+      const searchWhere: any = {
+        email: { notIn: knownEmails },
+        status: { not: 'pending' },
+        deletedAt: null,
+      };
+      if (search) searchWhere.email = { contains: search, mode: 'insensitive', notIn: knownEmails };
+
+      const unregistered = await prisma.user.findMany({
+        where: searchWhere,
+        select: { id: true, email: true, name: true, createdAt: true },
+        take: 100,
+      });
+
+      nonSubscribers = unregistered.map((u: { id: string; email: string; name: string | null; createdAt: Date }) => ({
+        id: 'user-' + u.id,
+        email: u.email,
+        name: u.name,
+        source: 'registered',
+        isActive: false,
+        subscribedAt: u.createdAt,
+        unsubscribedAt: null,
+        neverSubscribed: true,
+      }));
+    }
+
+    const allResults = [...subscribers, ...nonSubscribers];
+    const grandTotal = total + nonSubscribers.length;
+
+    return NextResponse.json({
+      subscribers: allResults,
+      total: grandTotal,
+      activeCount,
+      page,
+      totalPages: Math.ceil(Math.max(total, 1) / limit),
+    });
   } catch (error) {
+    console.error('Newsletter GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch subscribers' }, { status: 500 });
   }
 }
