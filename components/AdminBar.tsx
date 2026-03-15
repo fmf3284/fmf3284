@@ -98,6 +98,12 @@ export default function AdminBar() {
               >
                 🕐 Logs
               </Link>
+              <Link 
+                href="/admin/newsletter" 
+                className={`px-3 py-1.5 rounded-lg transition-all ${pathname === '/admin/newsletter' ? 'bg-yellow-500/30 text-yellow-300 font-semibold' : 'hover:bg-white/10'}`}
+              >
+                📧 Newsletter
+              </Link>
             </nav>
           </div>
 
