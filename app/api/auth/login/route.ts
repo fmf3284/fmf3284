@@ -7,13 +7,11 @@ import {
   verifyPassword,
   createSessionToken,
   getSessionDurationSeconds,
-  checkLoginAttempt,
-  recordFailedLogin,
-  clearLoginAttempts,
   sanitizeEmail,
   isValidEmail,
   securityHeaders,
 } from '@/server/utils/security';
+import { checkDbLockout, recordDbFailedLogin, clearDbLockout } from '@/server/utils/lockout';
 
 const loginRateLimiter = rateLimit(rateLimitPresets.auth);
 
@@ -50,18 +48,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check brute force protection (by IP + email combination)
-    const bruteForceKey = `${ipAddress.split(',')[0].trim()}_${sanitizedEmail}`;
-    const attemptCheck = checkLoginAttempt(bruteForceKey);
-    
-    if (!attemptCheck.allowed) {
-      // Log the lockout
-      console.warn(`Login locked out: ${sanitizedEmail} from ${ipAddress}`);
-      
+    // Check DB-backed progressive lockout
+    const lockoutCheck = await checkDbLockout(sanitizedEmail);
+
+    if (!lockoutCheck.allowed) {
+      console.warn(`Login locked: ${sanitizedEmail} from ${ipAddress} (permanent: ${lockoutCheck.isPermanent})`);
       return NextResponse.json(
-        { 
-          error: attemptCheck.message,
-          lockedUntil: attemptCheck.lockedUntil?.toISOString(),
+        {
+          error: lockoutCheck.message,
+          lockedUntil: lockoutCheck.lockedUntil?.toISOString(),
+          isPermanent: lockoutCheck.isPermanent,
         },
         { status: 429, headers: securityHeaders }
       );
@@ -86,12 +82,9 @@ export async function POST(request: NextRequest) {
     const invalidCredentialsError = 'Invalid email or password';
 
     if (!user) {
-      const failedAttempt = recordFailedLogin(bruteForceKey);
+      // Still record attempt (won't find user but maintains timing consistency)
       return NextResponse.json(
-        { 
-          error: invalidCredentialsError,
-          remainingAttempts: failedAttempt.remainingAttempts,
-        },
+        { error: invalidCredentialsError },
         { status: 401, headers: securityHeaders }
       );
     }
@@ -124,34 +117,31 @@ export async function POST(request: NextRequest) {
     }
 
     if (!passwordValid) {
-      const failedAttempt = recordFailedLogin(bruteForceKey);
-      
-      // Log failed attempt
-      try {
-        await prisma.activityLog.create({
-          data: {
-            userId: user.id,
-            action: 'login_failed',
-            details: JSON.stringify({ reason: 'invalid_password' }),
-            ipAddress: ipAddress.split(',')[0].trim(),
-            userAgent: userAgent.substring(0, 500),
+      // Record failed attempt in DB — progressive lockout
+      const failResult = await recordDbFailedLogin(sanitizedEmail, ipAddress, user.name || undefined);
+
+      if (!failResult.allowed) {
+        return NextResponse.json(
+          {
+            error: failResult.message,
+            lockedUntil: failResult.lockedUntil?.toISOString(),
+            isPermanent: failResult.isPermanent,
           },
-        });
-      } catch (e) {
-        console.error('Failed to log failed login:', e);
+          { status: 429, headers: securityHeaders }
+        );
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: invalidCredentialsError,
-          remainingAttempts: failedAttempt.remainingAttempts,
+          remainingAttempts: failResult.remainingAttempts,
         },
         { status: 401, headers: securityHeaders }
       );
     }
 
-    // Clear failed login attempts on success
-    clearLoginAttempts(bruteForceKey);
+    // Clear DB lockout on successful login
+    await clearDbLockout(sanitizedEmail);
 
     // Password correct — send 2FA OTP before creating session
     const otp = String(crypto.randomInt(100000, 999999));
