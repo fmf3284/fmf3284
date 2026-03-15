@@ -14,7 +14,7 @@ interface Deal {
   isFeatured: boolean;
 }
 
-const categories = ['All', 'Gym', 'Yoga', 'Pilates', 'Cross Training', 'Sports Club', 'Personal Trainer'];
+const categories = ['All', 'Gym', 'Yoga', 'Pilates', 'CrossFit', 'Sports Club', 'Personal Trainer', 'Dance', 'Martial Arts', 'Boxing', 'Kickboxing', 'Swimming', 'Cycling', 'Barre', 'Climbing', 'Tennis', 'Pickleball', 'Weightlifting', 'Gymnastics', 'Rowing', 'Running', 'Stretching', 'Sauna & Recovery', 'Wellness', 'Rehabilitation'];
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
