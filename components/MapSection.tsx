@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface MapMarker {
   id: string;
@@ -8,251 +9,357 @@ interface MapMarker {
   lat: number;
   lng: number;
   type: string;
+  address: string;
+  rating?: number;
 }
 
-const mockMarkers: MapMarker[] = [
-  { id: '1', name: 'Elite Fitness Center', lat: 40.7128, lng: -74.0060, type: 'Gym' },
-  { id: '2', name: 'Zen Yoga Studio', lat: 40.7580, lng: -73.9855, type: 'Yoga' },
-  { id: '3', name: 'PowerFit Training', lat: 40.7489, lng: -73.9680, type: 'Personal Training' },
-];
+const CATEGORY_ICONS: Record<string, string> = {
+  'Gym': '💪', 'Yoga': '🧘', 'Pilates': '🤸', 'CrossFit': '🏋️',
+  'Swimming': '🏊', 'Cycling': '🚴', 'Boxing': '🥊', 'Martial Arts': '🥋',
+  'Dance': '💃', 'Climbing': '🧗', 'Tennis': '🎾', 'Wellness': '🌿',
+};
 
-
-/**
- * MapSection Component
- *
- * Displays fitness locations on an interactive map.
- *
- * Features:
- * - Auto-detects if Google Maps API key is configured
- * - Falls back to placeholder UI if not configured
- * - Displays locations from database
- * - Works with both seed data and imported data
- *
- * To enable real Google Maps:
- * 1. Get API key from https://console.cloud.google.com/
- * 2. Enable Maps JavaScript API
- * 3. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env
- * 4. Restart dev server
- */
 export default function MapSection() {
+  const router = useRouter();
+  const [markers, setMarkers] = useState<MapMarker[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const [, setMapReady] = useState(false);
-  const [isGoogleMapsEnabled, setIsGoogleMapsEnabled] = useState(false);
+  const [mapsReady, setMapsReady] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const mapMarkersRef = useRef<google.maps.Marker[]>([]);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
 
-  // Check if Google Maps API is configured
-  useEffect(() => {
-    setIsClient(true);
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    setIsGoogleMapsEnabled(!!apiKey);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  useEffect(() => { setIsClient(true); }, []);
+
+  const clearMarkers = () => {
+    mapMarkersRef.current.forEach(m => m.setMap(null));
+    mapMarkersRef.current = [];
+  };
+
+  const addMarker = useCallback((place: MapMarker) => {
+    if (!googleMapRef.current) return;
+    const marker = new google.maps.Marker({
+      position: { lat: place.lat, lng: place.lng },
+      map: googleMapRef.current,
+      title: place.name,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#8b5cf6',
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+      },
+    });
+    marker.addListener('click', () => {
+      setSelectedMarker(place.id);
+      googleMapRef.current?.panTo({ lat: place.lat, lng: place.lng });
+      googleMapRef.current?.setZoom(16);
+    });
+    mapMarkersRef.current.push(marker);
   }, []);
 
-  const initializeMap = useCallback(() => {
-    if (!mapRef.current || !window.google) return;
+  const searchNearby = useCallback((location: { lat: number; lng: number }) => {
+    if (!placesServiceRef.current) return;
+    setSearching(true);
+    setMarkers([]);
+    clearMarkers();
 
-    // Create map centered on first marker
-    const center = mockMarkers.length > 0
-      ? { lat: mockMarkers[0].lat, lng: mockMarkers[0].lng }
-      : { lat: 40.7128, lng: -74.0060 }; // NYC default
+    const request: google.maps.places.PlaceSearchRequest = {
+      location: new google.maps.LatLng(location.lat, location.lng),
+      radius: 8000,
+      type: 'gym',
+    };
+
+    placesServiceRef.current.nearbySearch(request, (results, status) => {
+      setSearching(false);
+      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+        const newMarkers: MapMarker[] = results.slice(0, 10).map((p, i) => ({
+          id: p.place_id || String(i),
+          name: p.name || 'Unknown',
+          lat: p.geometry!.location!.lat(),
+          lng: p.geometry!.location!.lng(),
+          type: p.types?.includes('gym') ? 'Gym' : 'Fitness',
+          address: p.vicinity || '',
+          rating: p.rating,
+        }));
+        setMarkers(newMarkers);
+        newMarkers.forEach(m => addMarker(m));
+
+        // Fit map to markers
+        const bounds = new google.maps.LatLngBounds();
+        newMarkers.forEach(m => bounds.extend({ lat: m.lat, lng: m.lng }));
+        googleMapRef.current?.fitBounds(bounds);
+      }
+    });
+  }, [addMarker]);
+
+  const initMap = useCallback((center: { lat: number; lng: number }) => {
+    if (!mapRef.current || !window.google) return;
 
     googleMapRef.current = new google.maps.Map(mapRef.current, {
       center,
-      zoom: 12,
+      zoom: 13,
       styles: [
-        {
-          featureType: 'all',
-          elementType: 'geometry',
-          stylers: [{ color: '#1f2937' }],
-        },
-        {
-          featureType: 'water',
-          elementType: 'geometry',
-          stylers: [{ color: '#111827' }],
-        },
-        {
-          featureType: 'road',
-          elementType: 'geometry',
-          stylers: [{ color: '#374151' }],
-        },
-        {
-          featureType: 'poi',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#9ca3af' }],
-        },
+        { featureType: 'all', elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0f0f1a' }] },
+        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d2d44' }] },
+        { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1a1a2e' }] },
+        { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#1e1e30' }] },
+        { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1e1e30' }] },
+        { featureType: 'all', elementType: 'labels.text.fill', stylers: [{ color: '#8b8baa' }] },
+        { featureType: 'all', elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
       ],
+      disableDefaultUI: false,
+      zoomControl: true,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: true,
     });
 
-    // Add markers
-    mockMarkers.forEach((marker) => {
-      const mapMarker = new google.maps.Marker({
-        position: { lat: marker.lat, lng: marker.lng },
-        map: googleMapRef.current!,
-        title: marker.name,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: '#84cc16',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-        },
+    // Invisible div for PlacesService
+    const dummy = document.createElement('div');
+    placesServiceRef.current = new google.maps.places.PlacesService(googleMapRef.current);
+
+    // Setup Autocomplete on input
+    if (inputRef.current) {
+      autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+        types: ['geocode', 'establishment'],
+        fields: ['geometry', 'formatted_address', 'name'],
       });
-
-      // Add click listener
-      mapMarker.addListener('click', () => {
-        setSelectedMarker(marker.id);
-        googleMapRef.current?.panTo({ lat: marker.lat, lng: marker.lng });
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current!.getPlace();
+        if (place.geometry?.location) {
+          const loc = {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+          };
+          setInputValue(place.formatted_address || place.name || '');
+          googleMapRef.current?.setCenter(loc);
+          googleMapRef.current?.setZoom(14);
+          searchNearby(loc);
+        }
       });
-
-      markersRef.current.push(mapMarker);
-    });
-
-    setMapReady(true);
-  }, []);
-
-  // Initialize Google Maps
-  useEffect(() => {
-    if (!isClient || !isGoogleMapsEnabled || !mapRef.current) {
-      return;
     }
 
-    // Load Google Maps script
-    const loadGoogleMaps = () => {
-      // Check if already loaded
-      if (window.google && window.google.maps) {
-        initializeMap();
+    setMapsReady(true);
+    searchNearby(center);
+  }, [searchNearby]);
+
+  // Load Google Maps + try geolocation
+  useEffect(() => {
+    if (!isClient || !apiKey) return;
+
+    const load = () => {
+      if (window.google?.maps) {
+        // Try user's location first
+        navigator.geolocation?.getCurrentPosition(
+          pos => {
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setUserLocation(loc);
+            initMap(loc);
+          },
+          () => initMap({ lat: 30.2672, lng: -97.7431 }) // Austin TX default
+        );
         return;
       }
 
-      // Load script
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
       script.async = true;
       script.defer = true;
-      script.onload = initializeMap;
-      script.onerror = () => {
-        console.error('Failed to load Google Maps');
-        setIsGoogleMapsEnabled(false);
+      script.onload = () => {
+        navigator.geolocation?.getCurrentPosition(
+          pos => {
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setUserLocation(loc);
+            initMap(loc);
+          },
+          () => initMap({ lat: 30.2672, lng: -97.7431 })
+        );
       };
       document.head.appendChild(script);
     };
 
-    loadGoogleMaps();
-
-    // Cleanup
+    load();
     return () => {
-      markersRef.current.forEach(marker => marker.setMap(null));
-      markersRef.current = [];
+      mapMarkersRef.current.forEach(m => m.setMap(null));
+      mapMarkersRef.current = [];
     };
-  }, [isClient, isGoogleMapsEnabled, initializeMap]);
+  }, [isClient, apiKey, initMap]);
 
-  if (!isClient) {
-    return <div className="map-section animate-pulse bg-[#1e1e2d] h-96" />;
+  const handleSearchClick = () => {
+    if (!inputValue.trim() || !mapsReady) return;
+    // If user typed manually (didn't pick autocomplete suggestion), geocode it
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: inputValue }, (results, status) => {
+      if (status === 'OK' && results?.[0]) {
+        const loc = {
+          lat: results[0].geometry.location.lat(),
+          lng: results[0].geometry.location.lng(),
+        };
+        googleMapRef.current?.setCenter(loc);
+        googleMapRef.current?.setZoom(14);
+        searchNearby(loc);
+      }
+    });
+  };
+
+  const handleViewAll = () => {
+    if (userLocation) {
+      router.push(`/locations?lat=${userLocation.lat}&lng=${userLocation.lng}`);
+    } else {
+      router.push('/locations');
+    }
+  };
+
+  if (!isClient) return <div className="map-section animate-pulse bg-[#1e1e2d] h-96" />;
+
+  if (!apiKey) {
+    return (
+      <section className="py-16 bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a]">
+        <div className="max-w-screen-xl mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">Find Fitness Near You</h2>
+          <p className="text-gray-400 mb-6">Search thousands of gyms, studios and trainers in your area.</p>
+          <button onClick={() => router.push('/locations')}
+            className="px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition-all hover:scale-105">
+            🔍 Search Locations
+          </button>
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className="map-section py-16 bg-gradient-to-b from-gray-800 to-gray-900">
+    <section className="map-section py-16 bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a]">
       <div className="max-w-screen-xl mx-auto px-4">
-        <h2 className="text-3xl font-bold text-white text-center mb-12">
-          Find Fitness Centers Near You
+        <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-3">
+          Find Fitness Near You
         </h2>
+        <p className="text-gray-400 text-center mb-8 text-sm">
+          Search any address or allow location access to see gyms near you
+        </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Map container */}
-          <div className="lg:col-span-2 bg-[#1e1e2d] rounded-lg border border-gray-700 overflow-hidden h-96 relative">
-            {isGoogleMapsEnabled ? (
-              // Real Google Map
-              <div ref={mapRef} className="w-full h-full" />
-            ) : (
-              // Placeholder when API key not configured
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
-                <div className="text-center">
-                  <svg
-                    className="w-24 h-24 mx-auto mb-4 text-violet-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  <p className="text-gray-400 text-lg">Interactive Map View</p>
-                  <p className="text-gray-500 text-sm mt-2">
-                    {process.env.NODE_ENV === 'development'
-                      ? 'Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable maps'
-                      : 'Map integration coming soon'}
-                  </p>
-                </div>
-              </div>
-            )}
+        {/* Search bar with autocomplete */}
+        <div className="flex gap-3 max-w-2xl mx-auto mb-8">
+          <div className="flex-1 relative">
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearchClick()}
+              placeholder="Search city, address, or zip code..."
+              className="w-full pl-12 pr-4 py-4 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(139,92,246,0.3)',
+              }}
+            />
+          </div>
+          <button
+            onClick={handleSearchClick}
+            disabled={searching || !mapsReady}
+            className="px-6 py-4 rounded-xl font-bold text-white transition-all disabled:opacity-50 hover:scale-105 whitespace-nowrap"
+            style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }}
+          >
+            {searching ? (
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                Searching...
+              </span>
+            ) : '🔍 Search'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Map */}
+          <div className="lg:col-span-2 rounded-2xl overflow-hidden border"
+            style={{ border: '1px solid rgba(139,92,246,0.2)', height: '420px' }}>
+            <div ref={mapRef} className="w-full h-full" />
           </div>
 
-          {/* Locations list */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-white mb-4">Nearby Locations</h3>
-            {mockMarkers.map((marker) => (
-              <div
-                key={marker.id}
-                onClick={() => {
-                  setSelectedMarker(marker.id);
-                  // Pan map to marker if Google Maps is loaded
-                  if (googleMapRef.current) {
-                    googleMapRef.current.panTo({ lat: marker.lat, lng: marker.lng });
-                    googleMapRef.current.setZoom(15);
-                  }
-                }}
-                className={`bg-[#1e1e2d] rounded-lg p-4 border cursor-pointer transition-all duration-300 ${
-                  selectedMarker === marker.id
-                    ? 'border-violet-500 ring-2 ring-violet-500'
-                    : 'border-gray-700 hover:border-violet-500'
-                }`}
-              >
-                <h4 className="text-white font-semibold mb-1">{marker.name}</h4>
-                <p className="text-gray-400 text-sm mb-2">{marker.type}</p>
-                <div className="flex items-center text-violet-500 text-sm">
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  View on map
+          {/* Results sidebar */}
+          <div className="flex flex-col gap-3 overflow-y-auto" style={{ maxHeight: '420px' }}>
+            {searching ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-xl p-4 animate-pulse"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.1)' }}>
+                  <div className="h-4 bg-gray-700 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-gray-800 rounded w-1/2" />
                 </div>
+              ))
+            ) : markers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                <span className="text-4xl mb-3">📍</span>
+                <p className="text-gray-400 text-sm">Search an address to see<br/>nearby fitness locations</p>
               </div>
-            ))}
+            ) : (
+              <>
+                <p className="text-gray-400 text-xs px-1">{markers.length} locations found nearby</p>
+                {markers.map(marker => (
+                  <button
+                    key={marker.id}
+                    onClick={() => {
+                      setSelectedMarker(marker.id);
+                      googleMapRef.current?.panTo({ lat: marker.lat, lng: marker.lng });
+                      googleMapRef.current?.setZoom(16);
+                    }}
+                    className="text-left rounded-xl p-4 transition-all"
+                    style={{
+                      background: selectedMarker === marker.id
+                        ? 'rgba(139,92,246,0.15)'
+                        : 'rgba(255,255,255,0.04)',
+                      border: selectedMarker === marker.id
+                        ? '1px solid rgba(139,92,246,0.6)'
+                        : '1px solid rgba(139,92,246,0.1)',
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl flex-shrink-0 mt-0.5">
+                        {CATEGORY_ICONS[marker.type] || '🏃'}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-white font-semibold text-sm leading-tight truncate">{marker.name}</p>
+                        <p className="text-violet-400 text-xs mt-0.5">{marker.type}</p>
+                        {marker.address && (
+                          <p className="text-gray-500 text-xs mt-1 truncate">{marker.address}</p>
+                        )}
+                        {marker.rating && (
+                          <p className="text-amber-400 text-xs mt-1">⭐ {marker.rating.toFixed(1)}</p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
 
-        {/* Search controls */}
-        <div className="mt-8 flex flex-col md:flex-row gap-4 justify-center">
-          <input
-            type="text"
-            placeholder="Enter your location..."
-            className="px-6 py-3 bg-[#1e1e2d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-          />
-          <button className="px-8 py-3 bg-violet-500 hover:bg-violet-600 text-gray-900 font-semibold rounded-lg transition-colors duration-300">
-            Search
+        {/* CTA */}
+        <div className="text-center mt-8">
+          <button onClick={handleViewAll}
+            className="px-8 py-3 rounded-xl font-semibold text-white text-sm transition-all hover:scale-105"
+            style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }}>
+            View All Locations & Advanced Filters →
           </button>
         </div>
       </div>
