@@ -39,6 +39,12 @@ model User {
   otpExpires    DateTime?
   otpPurpose    String?   // "login" or "reset"
 
+  // Progressive login lockout (DB-backed, survives restarts)
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  lastFailedLoginAt DateTime?
+  lockNotifiedAt    DateTime? // When we last sent lockout email
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
