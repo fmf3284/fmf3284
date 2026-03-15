@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [savedLocations] = useState<SavedLocation[]>([]);
+  const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -28,6 +28,15 @@ export default function DashboardPage() {
         if (!data.authenticated) {
           router.push('/login');
           return;
+        }
+        // Fetch saved locations (bookmarks)
+        try {
+          const bookmarksRes = await apiGet('/api/bookmarks');
+          if (bookmarksRes?.bookmarks) {
+            setSavedLocations(bookmarksRes.bookmarks);
+          }
+        } catch (e) {
+          console.error('Failed to load bookmarks:', e);
         }
 
         setUser(data.user);
