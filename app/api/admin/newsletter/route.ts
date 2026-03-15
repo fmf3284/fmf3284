@@ -1,123 +1,146 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
+import { getRequestUser } from '@/server/auth/session';
 import { EmailService } from '@/server/services/email.service';
-import { rateLimit, rateLimitPresets } from '@/server/middleware/rateLimit';
-import { securityHeaders, isValidEmail, sanitizeEmail } from '@/server/utils/security';
-
-const rateLimiter = rateLimit(rateLimitPresets.auth);
-
-const welcomeHtml = (email: string) => `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0f1a;margin:0;padding:40px 20px;">
-  <div style="max-width:560px;margin:0 auto;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(139,92,246,0.3);">
-    <div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);padding:32px 30px;text-align:center;">
-      <h1 style="color:#fff;margin:0;font-size:26px;font-weight:700;">🏋️ You're In!</h1>
-    </div>
-    <div style="padding:32px 30px;text-align:center;">
-      <p style="color:#a0a0b0;font-size:16px;line-height:1.6;margin:0 0 20px;">
-        Thanks for subscribing to <strong style="color:#fff;">Find My Fitness</strong>! You'll be the first to know about:
-      </p>
-      <div style="text-align:left;background:rgba(139,92,246,0.08);border-radius:10px;padding:20px;margin:0 0 24px;">
-        <p style="color:#c4b5fd;margin:0 0 10px;">💪 Expert fitness tips & workout guides</p>
-        <p style="color:#c4b5fd;margin:0 0 10px;">🎁 Exclusive deals & discounts on gyms</p>
-        <p style="color:#c4b5fd;margin:0 0 10px;">📍 New fitness locations in your area</p>
-        <p style="color:#c4b5fd;margin:0;">🏆 Member success stories & inspiration</p>
-      </div>
-      <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.findmyfitness.fit'}/locations"
-         style="display:inline-block;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px;">
-        Find Fitness Near You →
-      </a>
-    </div>
-    <div style="background:rgba(139,92,246,0.08);padding:16px 30px;text-align:center;border-top:1px solid rgba(139,92,246,0.2);">
-      <p style="color:#606070;font-size:12px;margin:0;">
-        © ${new Date().getFullYear()} Find My Fitness ·
-        <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.findmyfitness.fit'}/unsubscribe?email=${encodeURIComponent(email)}" style="color:#8b5cf6;">Unsubscribe</a>
-      </p>
-    </div>
-  </div>
-</body>
-</html>`;
 
 /**
- * POST /api/newsletter
- * Subscribe to newsletter — saves to DB + sends welcome email
+ * GET /api/admin/newsletter
+ * List all subscribers
  */
-export async function POST(request: NextRequest) {
-  const rl = await rateLimiter(request);
-  if (rl) return rl;
+export async function GET(request: NextRequest) {
+  const user = await getRequestUser(request);
+  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
 
   try {
-    const { email, name, source = 'footer' } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = 50;
+    const search = searchParams.get('search') || '';
+    const activeOnly = searchParams.get('active') !== 'false';
 
-    if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400, headers: securityHeaders });
+    const where: any = {};
+    if (activeOnly) where.isActive = true;
+    if (search) where.email = { contains: search, mode: 'insensitive' };
 
-    const sanitized = sanitizeEmail(email);
-    if (!isValidEmail(sanitized)) return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400, headers: securityHeaders });
+    const [subscribers, total, activeCount] = await Promise.all([
+      prisma.newsletterSubscriber.findMany({
+        where,
+        orderBy: { subscribedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.newsletterSubscriber.count({ where }),
+      prisma.newsletterSubscriber.count({ where: { isActive: true } }),
+    ]);
 
-    // Check if already subscribed
-    const existing = await prisma.newsletterSubscriber.findUnique({ where: { email: sanitized } });
-
-    if (existing) {
-      if (existing.isActive) {
-        return NextResponse.json({ success: true, message: 'You\'re already subscribed!' }, { status: 200, headers: securityHeaders });
-      }
-      // Re-subscribe if they previously unsubscribed
-      await prisma.newsletterSubscriber.update({
-        where: { email: sanitized },
-        data: { isActive: true, unsubscribedAt: null, subscribedAt: new Date() },
-      });
-    } else {
-      // Find linked user account if exists
-      const user = await prisma.user.findUnique({ where: { email: sanitized }, select: { id: true } });
-
-      await prisma.newsletterSubscriber.create({
-        data: {
-          email: sanitized,
-          name: name || null,
-          source,
-          userId: user?.id || null,
-        },
-      });
-
-      // Also mark user as newsletter subscriber if they have an account
-      if (user) {
-        await prisma.user.update({ where: { id: user.id }, data: { newsletterSubscribed: true } });
-      }
-    }
-
-    // Send welcome email
-    await EmailService.sendEmail({
-      to: sanitized,
-      subject: '🏋️ Welcome to Find My Fitness newsletter!',
-      html: welcomeHtml(sanitized),
-      text: `Thanks for subscribing to Find My Fitness! You'll receive fitness tips, exclusive deals, and updates.`,
-    });
-
-    return NextResponse.json({ success: true, message: 'You\'re subscribed! Check your inbox.' }, { status: 200, headers: securityHeaders });
+    return NextResponse.json({ subscribers, total, activeCount, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
-    console.error('Newsletter subscribe error:', error);
-    return NextResponse.json({ error: 'Failed to subscribe. Please try again.' }, { status: 500, headers: securityHeaders });
+    return NextResponse.json({ error: 'Failed to fetch subscribers' }, { status: 500 });
   }
 }
 
 /**
- * DELETE /api/newsletter
- * Unsubscribe
+ * POST /api/admin/newsletter
+ * Send broadcast email to all active subscribers
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    const { email } = await request.json();
-    if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 });
+export async function POST(request: NextRequest) {
+  const user = await getRequestUser(request);
+  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
 
-    await prisma.newsletterSubscriber.updateMany({
-      where: { email: sanitizeEmail(email) },
-      data: { isActive: false, unsubscribedAt: new Date() },
+  try {
+    const { subject, html, text, testEmail } = await request.json();
+
+    if (!subject || (!html && !text)) {
+      return NextResponse.json({ error: 'Subject and content are required' }, { status: 400 });
+    }
+
+    // Test mode — send only to one email
+    if (testEmail) {
+      await EmailService.sendEmail({ to: testEmail, subject: `[TEST] ${subject}`, html, text });
+      return NextResponse.json({ success: true, message: `Test email sent to ${testEmail}` });
+    }
+
+    // Get all active subscribers
+    const subscribers = await prisma.newsletterSubscriber.findMany({
+      where: { isActive: true },
+      select: { email: true, name: true },
     });
 
-    return NextResponse.json({ success: true, message: 'You have been unsubscribed.' });
+    if (subscribers.length === 0) {
+      return NextResponse.json({ error: 'No active subscribers found' }, { status: 400 });
+    }
+
+    // Send in batches of 10 to avoid rate limits
+    const BATCH = 10;
+    let sent = 0;
+    let failed = 0;
+
+    for (let i = 0; i < subscribers.length; i += BATCH) {
+      const batch = subscribers.slice(i, i + BATCH);
+      await Promise.allSettled(
+        batch.map(async (sub) => {
+          try {
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.findmyfitness.fit';
+            const unsubLink = `${baseUrl}/unsubscribe?email=${encodeURIComponent(sub.email)}`;
+            const personalizedHtml = (html || '') +
+              `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #333;text-align:center;">
+                <p style="color:#606070;font-size:12px;margin:0;">
+                  © ${new Date().getFullYear()} Find My Fitness ·
+                  <a href="${unsubLink}" style="color:#8b5cf6;">Unsubscribe</a>
+                </p>
+              </div>`;
+            await EmailService.sendEmail({ to: sub.email, subject, html: personalizedHtml, text });
+            sent++;
+          } catch {
+            failed++;
+          }
+        })
+      );
+      // Small delay between batches
+      if (i + BATCH < subscribers.length) await new Promise(r => setTimeout(r, 500));
+    }
+
+    // Log the broadcast
+    try {
+      await prisma.activityLog.create({
+        data: {
+          userId: user.id,
+          action: 'newsletter_broadcast',
+          details: JSON.stringify({ subject, totalSubscribers: subscribers.length, sent, failed }),
+          ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
+          userAgent: '',
+        },
+      });
+    } catch { /* non-blocking */ }
+
+    return NextResponse.json({
+      success: true,
+      message: `Newsletter sent to ${sent} subscriber${sent !== 1 ? 's' : ''}${failed > 0 ? `. ${failed} failed.` : '.'}`,
+      sent,
+      failed,
+    });
+  } catch (error) {
+    console.error('Newsletter broadcast error:', error);
+    return NextResponse.json({ error: 'Failed to send newsletter' }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/admin/newsletter
+ * Remove a subscriber (admin action)
+ */
+export async function DELETE(request: NextRequest) {
+  const user = await getRequestUser(request);
+  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
+  try {
+    const { email } = await request.json();
+    await prisma.newsletterSubscriber.updateMany({
+      where: { email },
+      data: { isActive: false, unsubscribedAt: new Date() },
+    });
+    return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: 'Failed to unsubscribe.' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to remove subscriber' }, { status: 500 });
   }
 }
