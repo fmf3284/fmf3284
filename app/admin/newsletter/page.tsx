@@ -13,6 +13,7 @@ interface Subscriber {
   isActive: boolean;
   subscribedAt: string;
   unsubscribedAt: string | null;
+  neverSubscribed?: boolean;
 }
 
 export default function AdminNewsletterPage() {
@@ -111,6 +112,7 @@ export default function AdminNewsletterPage() {
   const sourceColor: Record<string, string> = {
     footer: 'bg-blue-500/20 text-blue-300',
     register: 'bg-green-500/20 text-green-300',
+    registered: 'bg-gray-500/20 text-gray-400',
     admin: 'bg-violet-500/20 text-violet-300',
   };
 
@@ -244,15 +246,19 @@ export default function AdminNewsletterPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sub.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                        {sub.isActive ? '✅ Active' : '❌ Unsubscribed'}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        sub.isActive ? 'bg-green-500/20 text-green-400' :
+                        sub.neverSubscribed ? 'bg-gray-500/20 text-gray-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}>
+                        {sub.isActive ? '✅ Active' : sub.neverSubscribed ? '➖ Never subscribed' : '❌ Unsubscribed'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-400">
                       {new Date(sub.subscribedAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      {sub.isActive && (
+                      {sub.isActive && !sub.neverSubscribed && (
                         <button onClick={() => handleRemove(sub.email)}
                           className="px-2 py-1 bg-red-600/30 hover:bg-red-600 text-red-400 hover:text-white text-xs rounded transition-all">
                           Remove
