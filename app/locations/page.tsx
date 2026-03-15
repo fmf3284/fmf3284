@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import FitnessLocationCard, { FitnessLocation } from '@/components/FitnessLocationCard';
@@ -119,7 +119,6 @@ const sortOptions = [
 const distanceOptions = ['All', 'Under 1 mile', '1-2 miles', '2-3 miles', '3+ miles'];
 
 export default function LocationsPage() {
-  const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState('Name (A-Z)');
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,17 +143,7 @@ export default function LocationsPage() {
   // Store current location for re-search
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Read URL query params from home page category/city clicks
-  useEffect(() => {
-    const category = searchParams.get('category');
-    const city = searchParams.get('city');
-    if (category) {
-      setSelectedCategory(category);
-    }
-    if (city) {
-      setSearchQuery(city);
-    }
-  }, [searchParams]);
+
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   const scrollCategories = (dir: 'left' | 'right') => {
@@ -703,6 +692,13 @@ export default function LocationsPage() {
 
   return (
     <main className="content-wrapper">
+      {/* Read URL params from home page — wrapped in Suspense as required by Next.js */}
+      <Suspense fallback={null}>
+        <SearchParamsReader
+          onCategory={(cat) => setSelectedCategory(cat)}
+          onCity={(city) => setSearchQuery(city)}
+        />
+      </Suspense>
       {/* Hero Section */}
       <section className="splash-screen">
         <h1>Find Fitness Near You</h1>
@@ -1146,4 +1142,23 @@ export default function LocationsPage() {
       </section>
     </main>
   );
+}
+
+// Separate component so useSearchParams is inside a Suspense boundary
+function SearchParamsReader({
+  onCategory,
+  onCity,
+}: {
+  onCategory: (cat: string) => void;
+  onCity: (city: string) => void;
+}) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const category = searchParams.get('category');
+    const city = searchParams.get('city');
+    if (category) onCategory(category);
+    if (city) onCity(city);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
 }
