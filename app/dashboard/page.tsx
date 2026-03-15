@@ -17,7 +17,7 @@ interface SavedLocation {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string; email: string; newsletterSubscribed?: boolean } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; role?: string; newsletterSubscribed?: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
 
@@ -40,7 +40,7 @@ export default function DashboardPage() {
           console.error('Failed to load bookmarks:', e);
         }
 
-        setUser({ name: data.user.name, email: data.user.email, newsletterSubscribed: data.user.newsletterSubscribed || false });
+        setUser({ name: data.user.name, email: data.user.email, role: data.user.role, newsletterSubscribed: data.user.newsletterSubscribed || false });
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
@@ -69,6 +69,7 @@ export default function DashboardPage() {
       {/* Hero Section */}
       <section className="splash-screen">
         {/* Newsletter subscription banner — only shown to non-subscribers */}
+        {/* Show newsletter banner to all logged-in users who have not subscribed */}
         {user && !user.newsletterSubscribed && (
           <NewsletterBanner userEmail={user.email} userName={user.name} />
         )}
