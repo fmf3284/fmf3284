@@ -1,102 +1,62 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-interface Location {
-  id: string;
-  city: string;
-  state: string;
-  count: number;
-  image: string;
-}
-
-const locations: Location[] = [
-  { id: '1', city: 'New York', state: 'NY', count: 245, image: '🗽' },
-  { id: '2', city: 'Los Angeles', state: 'CA', count: 198, image: '🌴' },
-  { id: '3', city: 'Chicago', state: 'IL', count: 156, image: '🏙️' },
-  { id: '4', city: 'Houston', state: 'TX', count: 134, image: '🤠' },
-  { id: '5', city: 'Phoenix', state: 'AZ', count: 112, image: '🌵' },
-  { id: '6', city: 'Miami', state: 'FL', count: 98, image: '🏖️' },
+const cities = [
+  { city: 'Austin',       state: 'TX', icon: '🤠', description: 'Live Music Capital of the World' },
+  { city: 'Los Angeles',  state: 'CA', icon: '🌴', description: 'Year-round outdoor fitness' },
+  { city: 'New York',     state: 'NY', icon: '🗽', description: 'World-class fitness scene' },
+  { city: 'Miami',        state: 'FL', icon: '🏖️', description: 'Beach body ready gyms' },
+  { city: 'Chicago',      state: 'IL', icon: '🏙️', description: 'Windy City workouts' },
+  { city: 'Houston',      state: 'TX', icon: '🚀', description: 'Space City fitness hubs' },
+  { city: 'Phoenix',      state: 'AZ', icon: '🌵', description: 'Desert strength training' },
+  { city: 'Denver',       state: 'CO', icon: '🏔️', description: 'Mile High fitness' },
+  { city: 'Seattle',      state: 'WA', icon: '🌧️', description: 'Pacific Northwest gyms' },
+  { city: 'Nashville',    state: 'TN', icon: '🎸', description: 'Music City fitness' },
+  { city: 'San Diego',    state: 'CA', icon: '☀️', description: 'Beach and outdoor fitness' },
+  { city: 'Dallas',       state: 'TX', icon: '⭐', description: 'Big D fitness centers' },
 ];
 
 export default function LocationsCarousel() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isClient) return;
-
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % locations.length);
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [isClient]);
-
-  const handlePrevious = () => {
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + locations.length) % locations.length);
+  const handleClick = (city: string, state: string) => {
+    router.push(`/locations?city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`);
   };
-
-  const handleNext = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % locations.length);
-  };
-
-  if (!isClient) {
-    return <div className="locations-section animate-pulse bg-[#1e1e2d] h-96" />;
-  }
 
   return (
-    <section className="locations-section py-16 bg-[#0f0f1a]">
+    <section className="py-16 bg-[#0f0f1a]">
       <div className="max-w-screen-xl mx-auto px-4">
-        <h2 className="text-3xl font-bold text-white text-center mb-12">
+        <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-3">
           Popular Locations
         </h2>
+        <p className="text-gray-400 text-center mb-10">
+          Explore fitness options in top cities across the US
+        </p>
 
-        <div className="relative">
-          <div className="overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {locations.map((location, index) => (
-                <div
-                  key={location.id}
-                  className={`bg-[#1e1e2d] rounded-lg p-8 border border-gray-700 hover:border-violet-500 transition-all duration-300 cursor-pointer transform hover:scale-105 ${
-                    index === currentIndex ? 'ring-2 ring-violet-500' : ''
-                  }`}
-                >
-                  <div className="text-6xl mb-4 text-center">{location.image}</div>
-                  <h3 className="text-2xl font-bold text-white text-center mb-1">
-                    {location.city}
-                  </h3>
-                  <p className="text-gray-400 text-center mb-3">{location.state}</p>
-                  <p className="text-violet-500 font-semibold text-center">
-                    {location.count} fitness centers
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {cities.map((loc) => (
+            <button
+              key={`${loc.city}-${loc.state}`}
+              onClick={() => handleClick(loc.city, loc.state)}
+              className="group flex flex-col items-center gap-2 p-4 bg-[#1e1e2d] rounded-xl border border-violet-900/30 hover:border-violet-500 hover:bg-violet-500/10 transition-all duration-200 cursor-pointer text-center"
+            >
+              <span className="text-3xl group-hover:scale-110 transition-transform duration-200">
+                {loc.icon}
+              </span>
+              <span className="text-white text-sm font-bold leading-tight">{loc.city}</span>
+              <span className="text-violet-400 text-xs font-medium">{loc.state}</span>
+              <span className="text-gray-500 text-xs leading-tight hidden sm:block">{loc.description}</span>
+            </button>
+          ))}
+        </div>
 
+        <div className="text-center mt-8">
           <button
-            onClick={handlePrevious}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-[#1e1e2d] hover:bg-violet-500 text-white p-3 rounded-full shadow-lg transition-colors duration-300"
-            aria-label="Previous location"
+            onClick={() => router.push('/locations')}
+            className="px-8 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <button
-            onClick={handleNext}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-[#1e1e2d] hover:bg-violet-500 text-white p-3 rounded-full shadow-lg transition-colors duration-300"
-            aria-label="Next location"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            Search Your City →
           </button>
         </div>
       </div>
