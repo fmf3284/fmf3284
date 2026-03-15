@@ -1,8 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * NewsletterBanner
+ *
+ * Only renders on the dashboard for logged-in users who are NOT subscribed.
+ * Visitors and guests never see this — the parent (dashboard) only renders it
+ * when user.newsletterSubscribed === false.
+ *
+ * Repeat cycle (stored per user in localStorage):
+ *  X Dismiss          → hide 24 hours, then show again next visit after that
+ *  "Remind in a month" → hide 30 days, then resume 24h cycle forever
+ *  Both repeat indefinitely until the user subscribes.
+ */
 
-const STORAGE_KEY = 'newsletter_banner_muted_until';
+import { useState, useEffect } from 'react';
 
 interface NewsletterBannerProps {
   userEmail: string;
@@ -14,25 +25,21 @@ export default function NewsletterBanner({ userEmail, userName }: NewsletterBann
   const [subscribing, setSubscribing] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
 
-  useEffect(() => {
-    // Check if user muted the banner
-    try {
-      const mutedUntil = localStorage.getItem(STORAGE_KEY);
-      if (mutedUntil) {
-        const mutedDate = new Date(mutedUntil);
-        if (mutedDate > new Date()) {
-          // Still muted — don't show
-          return;
-        }
-        // Mute expired — clear it
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    } catch { /* localStorage not available */ }
+  // Per-user key so multiple accounts on same browser don't interfere
+  const storageKey = `newsletter_snooze_${userEmail}`;
 
-    // Show banner after a short delay so page loads first
+  useEffect(() => {
+    try {
+      const snoozeUntil = localStorage.getItem(storageKey);
+      if (snoozeUntil && new Date(snoozeUntil) > new Date()) {
+        return; // still snoozed
+      }
+      if (snoozeUntil) localStorage.removeItem(storageKey); // expired, clear it
+    } catch { /* localStorage unavailable */ }
+
     const timer = setTimeout(() => setVisible(true), 800);
     return () => clearTimeout(timer);
-  }, []);
+  }, [storageKey]);
 
   const handleSubscribe = async () => {
     setSubscribing(true);
@@ -44,7 +51,7 @@ export default function NewsletterBanner({ userEmail, userName }: NewsletterBann
       });
       if (res.ok) {
         setSubscribed(true);
-        // Hide after 3 seconds
+        try { localStorage.removeItem(storageKey); } catch { /* non-blocking */ }
         setTimeout(() => setVisible(false), 3000);
       }
     } catch { /* non-blocking */ }
@@ -52,20 +59,21 @@ export default function NewsletterBanner({ userEmail, userName }: NewsletterBann
   };
 
   const handleMute = () => {
+    // Snooze 30 days — after that resumes 24h cycle
     try {
-      const oneMonthFromNow = new Date();
-      oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
-      localStorage.setItem(STORAGE_KEY, oneMonthFromNow.toISOString());
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      localStorage.setItem(storageKey, d.toISOString());
     } catch { /* non-blocking */ }
     setVisible(false);
   };
 
   const handleDismiss = () => {
-    // Dismiss for this session only (24h — they'll see it again on next login)
+    // Snooze 24h — shows again next visit after 24h, repeats forever
     try {
-      const tomorrow = new Date();
-      tomorrow.setHours(tomorrow.getHours() + 24);
-      localStorage.setItem(STORAGE_KEY, tomorrow.toISOString());
+      const d = new Date();
+      d.setHours(d.getHours() + 24);
+      localStorage.setItem(storageKey, d.toISOString());
     } catch { /* non-blocking */ }
     setVisible(false);
   };
@@ -73,19 +81,18 @@ export default function NewsletterBanner({ userEmail, userName }: NewsletterBann
   if (!visible) return null;
 
   return (
-    <div className={`transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
-      <div className="mb-6 rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-900/30 to-purple-900/20 p-4">
+    <div className="mb-6">
+      <div className="rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-900/30 to-purple-900/20 p-4">
         {subscribed ? (
           <div className="flex items-center gap-3">
             <span className="text-2xl">🎉</span>
             <div>
-              <p className="text-white font-semibold">You're subscribed!</p>
+              <p className="text-white font-semibold">You&apos;re subscribed!</p>
               <p className="text-violet-300 text-sm">Welcome to the Find My Fitness newsletter.</p>
             </div>
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            {/* Left — message */}
             <div className="flex items-start gap-3">
               <span className="text-2xl flex-shrink-0">📧</span>
               <div>
@@ -97,8 +104,6 @@ export default function NewsletterBanner({ userEmail, userName }: NewsletterBann
                 </p>
               </div>
             </div>
-
-            {/* Right — actions */}
             <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
               <button
                 onClick={handleSubscribe}
@@ -110,14 +115,14 @@ export default function NewsletterBanner({ userEmail, userName }: NewsletterBann
               <button
                 onClick={handleMute}
                 className="px-3 py-2 text-gray-400 hover:text-gray-200 text-xs rounded-lg hover:bg-white/5 transition-all whitespace-nowrap"
-                title="Don't show this for 1 month"
+                title="Hide for 30 days then remind again"
               >
                 Remind in a month
               </button>
               <button
                 onClick={handleDismiss}
                 className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors rounded"
-                title="Dismiss for today"
+                title="Dismiss — show again in 24 hours"
                 aria-label="Dismiss"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
