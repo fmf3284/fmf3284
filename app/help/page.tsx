@@ -13,15 +13,15 @@ export default function HelpPage() {
     },
     {
       question: 'How do membership plans work?',
-      answer: 'We offer Bronze, Silver, Gold, and Platinum tiers. Each tier gives you access to different features and partner locations. Visit the Join page to see all options.',
+      answer: 'Browse thousands of gyms, yoga studios, personal trainers, and more for free. Create a free account to save your favorite locations and write reviews.',
     },
     {
       question: 'Can I cancel my membership anytime?',
       answer: 'Yes! All our memberships are month-to-month with no long-term contracts. You can cancel anytime from your dashboard.',
     },
     {
-      question: 'How do I become an affiliate partner?',
-      answer: 'Visit our Affiliate page and fill out the application form. Our team will review your submission and contact you within 3-5 business days.',
+      question: 'How do I list my gym or studio?',
+      answer: 'Contact us at support@findmyfitness.fit with your business details and we will add your location to our directory.',
     },
     {
       question: 'What if I have technical issues?',
