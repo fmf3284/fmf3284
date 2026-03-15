@@ -34,6 +34,12 @@ model User {
   loginCount    Int      @default(0)
   mustChangePassword Boolean @default(false)
 
+  // Progressive login lockout (DB-backed, survives restarts)
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  lastFailedLoginAt DateTime?
+  lockNotifiedAt    DateTime?
+
   // 2FA
   otpCode       String?
   otpExpires    DateTime?
