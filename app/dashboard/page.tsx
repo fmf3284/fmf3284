@@ -69,9 +69,9 @@ export default function DashboardPage() {
       {/* Hero Section */}
       <section className="splash-screen">
         {/* Newsletter subscription banner — only shown to non-subscribers */}
-        {/* Show newsletter banner to all logged-in users who have not subscribed */}
+        {/* Newsletter banner — shows every 24h for non-subscribed users */}
         {user && !user.newsletterSubscribed && (
-          <NewsletterBanner userEmail={user.email} userName={user.name} />
+          <NewsletterBanner userEmail={user.email} userName={user.name || undefined} />
         )}
 
         <h1>Welcome, {user.name}!</h1>
