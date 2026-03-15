@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import FitnessLocationCard, { FitnessLocation } from '@/components/FitnessLocationCard';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
@@ -9,14 +10,14 @@ import GoogleMap from '@/components/GoogleMap';
 const mockLocations: FitnessLocation[] = [
   {
     id: '1',
-    name: 'Austin Fitness Club',
+    name: 'Elite Fitness Center',
     category: 'Gym',
-    address: '500 W 2nd St',
-    city: 'Austin',
-    state: 'TX',
-    phone: '(512) 555-0123',
+    address: '123 Main Street',
+    city: 'New York',
+    state: 'NY',
+    phone: '(212) 555-0123',
     rating: 4.5,
-    reviewCount: 312,
+    reviewCount: 243,
     image: '💪',
     distance: '0.8 miles',
     priceRange: '$$',
@@ -24,29 +25,29 @@ const mockLocations: FitnessLocation[] = [
   },
   {
     id: '2',
-    name: 'Black Swan Yoga Austin',
+    name: 'Zen Yoga Studio',
     category: 'Yoga',
-    address: '4218 N Lamar Blvd',
-    city: 'Austin',
-    state: 'TX',
-    phone: '(512) 555-0456',
+    address: '456 Park Avenue',
+    city: 'New York',
+    state: 'NY',
+    phone: '(212) 555-0456',
     rating: 4.8,
-    reviewCount: 224,
+    reviewCount: 187,
     image: '🧘',
     distance: '1.2 miles',
     priceRange: '$',
-    amenities: ['Mat Rental', 'Showers', 'Meditation Room', 'Community Classes'],
+    amenities: ['Mat Rental', 'Showers', 'Meditation Room', 'Tea Bar'],
   },
   {
     id: '3',
-    name: 'Club Pilates South Lamar',
+    name: 'PowerCore Pilates',
     category: 'Pilates',
-    address: '1800 S Lamar Blvd',
-    city: 'Austin',
-    state: 'TX',
-    phone: '(512) 555-0789',
-    rating: 4.7,
-    reviewCount: 178,
+    address: '789 Broadway',
+    city: 'New York',
+    state: 'NY',
+    phone: '(212) 555-0789',
+    rating: 4.6,
+    reviewCount: 156,
     image: '🤸',
     distance: '1.5 miles',
     priceRange: '$$',
@@ -54,14 +55,14 @@ const mockLocations: FitnessLocation[] = [
   },
   {
     id: '4',
-    name: 'CrossFit Austin',
-    category: 'CrossFit',
-    address: '979 Springdale Rd',
-    city: 'Austin',
-    state: 'TX',
-    phone: '(512) 555-0321',
-    rating: 4.9,
-    reviewCount: 341,
+    name: 'CrossFit Downtown',
+    category: 'Cross Training',
+    address: '321 Fifth Avenue',
+    city: 'New York',
+    state: 'NY',
+    phone: '(212) 555-0321',
+    rating: 4.7,
+    reviewCount: 298,
     image: '🏋️',
     distance: '2.1 miles',
     priceRange: '$$$',
@@ -69,14 +70,14 @@ const mockLocations: FitnessLocation[] = [
   },
   {
     id: '5',
-    name: 'Austin Sports & Social Club',
+    name: 'NYC Sports Complex',
     category: 'Sports Club',
-    address: '3600 Presidential Blvd',
-    city: 'Austin',
-    state: 'TX',
-    phone: '(512) 555-0654',
+    address: '654 West Street',
+    city: 'New York',
+    state: 'NY',
+    phone: '(212) 555-0654',
     rating: 4.4,
-    reviewCount: 198,
+    reviewCount: 421,
     image: '⚽',
     distance: '2.8 miles',
     priceRange: '$$',
@@ -84,18 +85,18 @@ const mockLocations: FitnessLocation[] = [
   },
   {
     id: '6',
-    name: 'Atomic Athlete Austin',
+    name: 'Premium Personal Training',
     category: 'Personal Trainer',
-    address: '4616 Triangle Ave',
-    city: 'Austin',
-    state: 'TX',
-    phone: '(512) 555-0987',
+    address: '987 Madison Avenue',
+    city: 'New York',
+    state: 'NY',
+    phone: '(212) 555-0987',
     rating: 4.9,
-    reviewCount: 127,
+    reviewCount: 89,
     image: '🎯',
     distance: '1.0 miles',
     priceRange: '$$$',
-    amenities: ['1-on-1 Training', 'Custom Programs', 'Nutrition Plans', 'Performance Testing'],
+    amenities: ['1-on-1 Training', 'Custom Programs', 'Nutrition Plans', 'Virtual Sessions'],
   },
 ];
 
@@ -106,9 +107,8 @@ const allAmenities = Array.from(
 
 const categories = [
   'All', 'Gym', 'Yoga', 'Pilates', 'CrossFit', 'Sports Club', 'Personal Trainer',
-  'Dance', 'Martial Arts', 'Boxing', 'Kickboxing', 'Swimming', 'Cycling', 'Barre',
-  'Climbing', 'Tennis', 'Pickleball', 'Weightlifting', 'Gymnastics',
-  'Rowing', 'Running', 'Stretching', 'Sauna & Recovery', 'Wellness', 'Rehabilitation',
+  'Dance', 'Martial Arts', 'Boxing', 'Swimming', 'Cycling', 'Barre',
+  'Climbing', 'Tennis', 'Wellness', 'Rehabilitation',
 ];
 const sortOptions = [
   'Rating (High-Low)',
@@ -119,6 +119,7 @@ const sortOptions = [
 const distanceOptions = ['All', 'Under 1 mile', '1-2 miles', '2-3 miles', '3+ miles'];
 
 export default function LocationsPage() {
+  const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState('Name (A-Z)');
   const [searchQuery, setSearchQuery] = useState('');
@@ -142,6 +143,18 @@ export default function LocationsPage() {
 
   // Store current location for re-search
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Read URL query params from home page category/city clicks
+  useEffect(() => {
+    const category = searchParams.get('category');
+    const city = searchParams.get('city');
+    if (category) {
+      setSelectedCategory(category);
+    }
+    if (city) {
+      setSearchQuery(city);
+    }
+  }, [searchParams]);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   const scrollCategories = (dir: 'left' | 'right') => {
@@ -199,17 +212,9 @@ export default function LocationsPage() {
     else if (name.includes('cycl') || name.includes('spin') || name.includes('soulcycle') || name.includes('cyclebar') || name.includes('peloton')) category = 'Cycling';
     else if (name.includes('barre') || name.includes('pure barre') || name.includes('barre3')) category = 'Barre';
     else if (name.includes('climb') || name.includes('boulder') || name.includes('rock gym') || name.includes('vertical') || name.includes('summit')) category = 'Climbing';
-    else if (name.includes('tennis') || name.includes('racquet') || name.includes('squash')) category = 'Tennis';
-    else if (name.includes('pickleball') || name.includes('pickle ball')) category = 'Pickleball';
-    else if (name.includes('kickbox') || name.includes('muay thai') || name.includes('9round') || name.includes('cardio kick')) category = 'Kickboxing';
-    else if (name.includes('weightlift') || name.includes('powerlifting') || name.includes('barbell') || name.includes('strength club')) category = 'Weightlifting';
-    else if (name.includes('gymnastic') || name.includes('tumble') || name.includes('cheer')) category = 'Gymnastics';
-    else if (name.includes('rowing') || name.includes('row house') || name.includes('cityrow')) category = 'Rowing';
-    else if (name.includes('running club') || name.includes('run studio') || name.includes('track club')) category = 'Running';
-    else if (name.includes('stretch') || name.includes('stretchlab') || name.includes('mobility studio')) category = 'Stretching';
-    else if (name.includes('sauna') || name.includes('cryo') || name.includes('float') || name.includes('infrared') || name.includes('recovery lounge')) category = 'Sauna & Recovery';
+    else if (name.includes('tennis') || name.includes('racquet') || name.includes('squash') || name.includes('pickleball')) category = 'Tennis';
     else if (name.includes('wellness') || name.includes('ymca') || name.includes('recreation') || name.includes('community center') || name.includes('health center')) category = 'Wellness';
-    else if (name.includes('physical therapy') || name.includes('rehab') || name.includes('chiropract') || name.includes('sport medicine')) category = 'Rehabilitation';
+    else if (name.includes('physical therapy') || name.includes('rehab') || name.includes('chiropract') || name.includes('sport medicine') || name.includes('recovery')) category = 'Rehabilitation';
     else if (name.includes('sport') || name.includes('athletic') || name.includes('arena') || name.includes('stadium') || name.includes('complex')) category = 'Sports Club';
     
     // Get real photo URL from Google Places
@@ -362,15 +367,7 @@ export default function LocationsPage() {
       // Rehab & recovery
       'physical therapy', 'sports rehabilitation',
       // Racquet sports
-      'tennis club', 'racquetball', 'pickleball court',
-      // Strength
-      'weightlifting gym', 'powerlifting gym', 'barbell club',
-      // Gymnastics & rowing
-      'gymnastics center', 'rowing studio', 'indoor rowing',
-      // Running & stretching
-      'running club', 'stretch lab', 'mobility studio',
-      // Recovery
-      'sauna studio', 'cryotherapy', 'infrared sauna', 'recovery center',
+      'tennis club', 'racquetball', 'pickleball',
       // Stadium / arena fitness
       'stadium fitness', 'arena gym', 'functional fitness',
     ];
