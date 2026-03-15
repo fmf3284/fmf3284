@@ -39,6 +39,12 @@ model User {
   otpExpires    DateTime?
   otpPurpose    String?   // "login" or "reset"
 
+  // Progressive login lockout (DB-backed, survives restarts)
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  lastFailedLoginAt DateTime?
+  lockNotifiedAt    DateTime? // When we last sent lockout email
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -51,7 +57,6 @@ model User {
   favoriteActivities String?  // JSON array as string: ["Gym", "Yoga", "Running"]
   experienceLevel    String?  // "Beginner", "Intermediate", "Advanced"
   fitnessGoals       String?
-  newsletterSubscribed Boolean @default(false)
 
   bookmarks     Bookmark[]
   reviews       Review[]
@@ -357,19 +362,4 @@ model MembershipPlan {
   updatedAt   DateTime @updatedAt
 
   @@map("membership_plans")
-}
-
-model NewsletterSubscriber {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  name           String?
-  source         String    @default("footer") // "footer", "register", "admin"
-  isActive       Boolean   @default(true)
-  subscribedAt   DateTime  @default(now())
-  unsubscribedAt DateTime?
-  userId         String?
-
-  @@index([email])
-  @@index([isActive])
-  @@map("newsletter_subscribers")
 }
