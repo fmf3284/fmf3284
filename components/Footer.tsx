@@ -90,6 +90,7 @@ export default function Footer() {
                 { href: '/contact', label: 'Contact Us' },
                 { href: '/privacy', label: 'Privacy Policy' },
                 { href: '/terms', label: 'Terms of Service' },
+                { href: '/unsubscribe', label: 'Unsubscribe' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-gray-400 hover:text-white transition-colors text-sm">{link.label}</Link>
@@ -152,6 +153,7 @@ export default function Footer() {
             <div className="flex gap-6">
               <Link href="/privacy" className="text-gray-500 hover:text-violet-400 text-sm transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="text-gray-500 hover:text-violet-400 text-sm transition-colors">Terms of Service</Link>
+              <Link href="/unsubscribe" className="text-gray-500 hover:text-violet-400 text-sm transition-colors">Unsubscribe</Link>
             </div>
           </div>
         </div>
