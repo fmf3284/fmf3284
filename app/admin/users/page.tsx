@@ -668,24 +668,26 @@ export default function AdminUsers() {
                                 🔐 Master Reset
                               </button>
                             ) : (
-                              <button
-                                onClick={() => handleResetPassword(user)}
-                                disabled={updating === user.id}
-                                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded disabled:opacity-50"
-                                title="Reset Password"
-                              >
-                                🔑 Reset PW
-                              </button>
-                              {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                              <>
                                 <button
-                                  onClick={() => handleUnlock(user.id, user.name || user.email)}
+                                  onClick={() => handleResetPassword(user)}
                                   disabled={updating === user.id}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded disabled:opacity-50"
-                                  title="Unlock Account"
+                                  className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded disabled:opacity-50"
+                                  title="Reset Password"
                                 >
-                                  🔓 Unlock
+                                  🔑 Reset PW
                                 </button>
-                              )}
+                                {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                                  <button
+                                    onClick={() => handleUnlock(user.id, user.name || user.email)}
+                                    disabled={updating === user.id}
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded disabled:opacity-50"
+                                    title="Unlock Account"
+                                  >
+                                    🔓 Unlock
+                                  </button>
+                                )}
+                              </>
                             )}
                             <button
                               onClick={() => handleDelete(user.id, user.name || user.email, user.email)}
