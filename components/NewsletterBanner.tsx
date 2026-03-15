@@ -1,138 +1,278 @@
 'use client';
 
 /**
- * NewsletterBanner
+ * NewsletterBanner — two modes:
  *
- * Only renders on the dashboard for logged-in users who are NOT subscribed.
- * Visitors and guests never see this — the parent (dashboard) only renders it
- * when user.newsletterSubscribed === false.
+ * LOGGED-IN USER (newsletterSubscribed=false):
+ *   - Shows every 24h
+ *   - "Ignore" → dismiss for 24h, repeat forever
+ *   - "Remind in a month" → snooze 30 days, then back to 24h cycle
+ *   - Stored per-user in localStorage so multiple accounts don't conflict
  *
- * Repeat cycle (stored per user in localStorage):
- *  X Dismiss          → hide 24 hours, then show again next visit after that
- *  "Remind in a month" → hide 30 days, then resume 24h cycle forever
- *  Both repeat indefinitely until the user subscribes.
+ * VISITOR (not logged in):
+ *   - Shows every single visit (no snooze stored)
+ *   - "Ignore" → just hides for this page session only (closes the banner)
+ *   - No "Remind in a month" option
+ *   - Can still subscribe by entering their email
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface NewsletterBannerProps {
-  userEmail: string;
-  userName?: string;
+  // If provided = logged-in user mode. If null/undefined = visitor mode.
+  userEmail?: string | null;
+  userName?: string | null;
 }
 
 export default function NewsletterBanner({ userEmail, userName }: NewsletterBannerProps) {
   const [visible, setVisible] = useState(false);
+  const [email, setEmail] = useState(userEmail || '');
   const [subscribing, setSubscribing] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
-
-  // Per-user key so multiple accounts on same browser don't interfere
-  const storageKey = `newsletter_snooze_${userEmail}`;
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isLoggedIn = !!userEmail;
+  const storageKey = isLoggedIn ? `nl_snooze_${userEmail}` : null;
 
   useEffect(() => {
-    try {
-      const snoozeUntil = localStorage.getItem(storageKey);
-      if (snoozeUntil && new Date(snoozeUntil) > new Date()) {
-        return; // still snoozed
-      }
-      if (snoozeUntil) localStorage.removeItem(storageKey); // expired, clear it
-    } catch { /* localStorage unavailable */ }
-
-    const timer = setTimeout(() => setVisible(true), 800);
-    return () => clearTimeout(timer);
-  }, [storageKey]);
+    if (isLoggedIn && storageKey) {
+      try {
+        const snoozeUntil = localStorage.getItem(storageKey);
+        if (snoozeUntil && new Date(snoozeUntil) > new Date()) return;
+        if (snoozeUntil) localStorage.removeItem(storageKey);
+      } catch { /* no localStorage */ }
+    }
+    // Visitors: always show. Logged-in: show if not snoozed.
+    const t = setTimeout(() => setVisible(true), 600);
+    return () => clearTimeout(t);
+  }, [isLoggedIn, storageKey]);
 
   const handleSubscribe = async () => {
+    if (!email || !email.includes('@')) {
+      setError('Please enter a valid email address');
+      inputRef.current?.focus();
+      return;
+    }
+    setError('');
     setSubscribing(true);
     try {
       const res = await fetch('/api/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail, name: userName, source: 'dashboard_banner' }),
+        body: JSON.stringify({
+          email,
+          name: userName || undefined,
+          source: isLoggedIn ? 'dashboard_banner' : 'visitor_banner',
+        }),
       });
+      const data = await res.json();
       if (res.ok) {
         setSubscribed(true);
-        try { localStorage.removeItem(storageKey); } catch { /* non-blocking */ }
-        setTimeout(() => setVisible(false), 3000);
+        if (isLoggedIn && storageKey) {
+          try { localStorage.removeItem(storageKey); } catch { /* no-op */ }
+        }
+        setTimeout(() => setVisible(false), 3500);
+      } else {
+        setError(data.error || 'Something went wrong. Please try again.');
       }
-    } catch { /* non-blocking */ }
-    finally { setSubscribing(false); }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   const handleMute = () => {
-    // Snooze 30 days — after that resumes 24h cycle
-    try {
-      const d = new Date();
-      d.setDate(d.getDate() + 30);
-      localStorage.setItem(storageKey, d.toISOString());
-    } catch { /* non-blocking */ }
+    // Logged-in only: snooze 30 days then resume 24h cycle
+    if (isLoggedIn && storageKey) {
+      try {
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        localStorage.setItem(storageKey, d.toISOString());
+      } catch { /* no-op */ }
+    }
     setVisible(false);
   };
 
-  const handleDismiss = () => {
-    // Snooze 24h — shows again next visit after 24h, repeats forever
-    try {
-      const d = new Date();
-      d.setHours(d.getHours() + 24);
-      localStorage.setItem(storageKey, d.toISOString());
-    } catch { /* non-blocking */ }
+  const handleIgnore = () => {
+    if (isLoggedIn && storageKey) {
+      // Logged-in: snooze 24h — shows again next visit after 24h, forever
+      try {
+        const d = new Date();
+        d.setHours(d.getHours() + 24);
+        localStorage.setItem(storageKey, d.toISOString());
+      } catch { /* no-op */ }
+    }
+    // Visitor: just close for this session, will show again on next visit
     setVisible(false);
   };
 
   if (!visible) return null;
 
   return (
-    <div className="mb-6">
-      <div className="rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-900/30 to-purple-900/20 p-4">
-        {subscribed ? (
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🎉</span>
-            <div>
-              <p className="text-white font-semibold">You&apos;re subscribed!</p>
-              <p className="text-violet-300 text-sm">Welcome to the Find My Fitness newsletter.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl flex-shrink-0">📧</span>
-              <div>
-                <p className="text-white font-semibold text-sm">
-                  Stay in the loop, {userName?.split(' ')[0] || 'there'}!
-                </p>
-                <p className="text-gray-400 text-xs mt-0.5">
-                  Get fitness tips, exclusive deals, and new locations near you — straight to your inbox.
-                </p>
+    <>
+      {/* Backdrop blur overlay — subtle */}
+      <div
+        className="fixed inset-0 z-40 pointer-events-none"
+        style={{ background: 'rgba(0,0,0,0.15)', backdropFilter: 'blur(1px)' }}
+        aria-hidden="true"
+      />
+
+      {/* Banner — fixed bottom center */}
+      <div
+        className="fixed bottom-6 left-1/2 z-50 w-full max-w-xl px-4"
+        style={{ transform: 'translateX(-50%)' }}
+        role="dialog"
+        aria-label="Newsletter subscription"
+      >
+        <div
+          className="relative rounded-2xl overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #1a1035 0%, #1e1040 50%, #130d2e 100%)',
+            border: '1px solid rgba(139,92,246,0.4)',
+            boxShadow: '0 8px 40px rgba(139,92,246,0.25), 0 2px 8px rgba(0,0,0,0.5)',
+          }}
+        >
+          {/* Glow strip at top */}
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(167,139,250,0.8), transparent)' }}
+          />
+
+          {/* Animated background orb */}
+          <div
+            className="absolute -top-10 -right-10 w-40 h-40 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)',
+              animation: 'pulse 3s ease-in-out infinite',
+            }}
+          />
+
+          <div className="relative p-5">
+            {subscribed ? (
+              /* Success state */
+              <div className="flex items-center gap-4 py-1">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                >
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-white font-bold text-base">You&apos;re in! 🎉</p>
+                  <p className="text-emerald-400 text-sm">Check your inbox for a welcome email.</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-              <button
-                onClick={handleSubscribe}
-                disabled={subscribing}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-all whitespace-nowrap"
-              >
-                {subscribing ? '...' : '✉️ Subscribe'}
-              </button>
-              <button
-                onClick={handleMute}
-                className="px-3 py-2 text-gray-400 hover:text-gray-200 text-xs rounded-lg hover:bg-white/5 transition-all whitespace-nowrap"
-                title="Hide for 30 days then remind again"
-              >
-                Remind in a month
-              </button>
-              <button
-                onClick={handleDismiss}
-                className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors rounded"
-                title="Dismiss — show again in 24 hours"
-                aria-label="Dismiss"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {/* Top row: icon + text + close */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    {/* Icon */}
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }}
+                    >
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-sm leading-tight">
+                        {isLoggedIn
+                          ? `Hey ${userName?.split(' ')[0] || 'there'} — stay in the loop! 💪`
+                          : 'Get free fitness tips & deals 💪'}
+                      </p>
+                      <p className="text-gray-400 text-xs mt-1 leading-relaxed">
+                        {isLoggedIn
+                          ? 'Exclusive deals, new locations, and weekly fitness tips — straight to your inbox.'
+                          : 'Join thousands of fitness enthusiasts. No spam, unsubscribe anytime.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Close button */}
+                  <button
+                    onClick={handleIgnore}
+                    className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+                    title={isLoggedIn ? 'Ignore — remind me in 24 hours' : 'Ignore'}
+                    aria-label="Close"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Email input + subscribe */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    {!isLoggedIn && (
+                      <input
+                        ref={inputRef}
+                        type="email"
+                        value={email}
+                        onChange={e => { setEmail(e.target.value); setError(''); }}
+                        onKeyDown={e => e.key === 'Enter' && handleSubscribe()}
+                        placeholder="your@email.com"
+                        className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                        style={{
+                          background: 'rgba(255,255,255,0.06)',
+                          border: '1px solid rgba(139,92,246,0.3)',
+                        }}
+                      />
+                    )}
+                    <button
+                      onClick={handleSubscribe}
+                      disabled={subscribing}
+                      className="px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60 whitespace-nowrap"
+                      style={{
+                        background: subscribing
+                          ? 'rgba(139,92,246,0.5)'
+                          : 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                        boxShadow: subscribing ? 'none' : '0 4px 15px rgba(139,92,246,0.4)',
+                        flex: isLoggedIn ? '1' : 'none',
+                      }}
+                    >
+                      {subscribing ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          Subscribing...
+                        </span>
+                      ) : '✉️ Subscribe — it\'s free'}
+                    </button>
+                  </div>
+
+                  {/* Error */}
+                  {error && (
+                    <p className="text-red-400 text-xs px-1">{error}</p>
+                  )}
+
+                  {/* Bottom actions */}
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-gray-600 text-xs">
+                      {isLoggedIn ? '📅 Shows every 24h until you subscribe' : '🔒 No spam, ever.'}
+                    </p>
+                    {isLoggedIn && (
+                      <button
+                        onClick={handleMute}
+                        className="text-gray-500 hover:text-gray-300 text-xs transition-colors underline underline-offset-2 decoration-dotted"
+                      >
+                        Remind in a month
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
