@@ -116,7 +116,7 @@ export default function ContactPage() {
                 <h3 className="text-white font-semibold mb-4">Follow Us</h3>
                 <div className="flex space-x-4">
                   <a
-                    href="#"
+                    href="https://instagram.com/findmyfitness" target="_blank" rel="noopener noreferrer"
                     className="bg-gray-700 hover:bg-violet-500 text-white hover:text-gray-900 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
                     aria-label="TikTok"
                   >
@@ -126,7 +126,7 @@ export default function ContactPage() {
                   </a>
 
                   <a
-                    href="#"
+                    href="https://instagram.com/findmyfitness" target="_blank" rel="noopener noreferrer"
                     className="bg-gray-700 hover:bg-violet-500 text-white hover:text-gray-900 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
                     aria-label="Instagram"
                   >
@@ -136,7 +136,7 @@ export default function ContactPage() {
                   </a>
 
                   <a
-                    href="#"
+                    href="https://twitter.com/findmyfitness" target="_blank" rel="noopener noreferrer"
                     className="bg-gray-700 hover:bg-violet-500 text-white hover:text-gray-900 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
                     aria-label="Twitter"
                   >
