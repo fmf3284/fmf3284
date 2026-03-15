@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import LogoutButton from '@/components/LogoutButton';
+import NewsletterBanner from '@/components/NewsletterBanner';
 import { apiGet } from '@/lib/api';
 import { SkeletonDashboard } from '@/components/Skeleton';
 
@@ -16,7 +17,7 @@ interface SavedLocation {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; newsletterSubscribed?: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
 
@@ -39,7 +40,7 @@ export default function DashboardPage() {
           console.error('Failed to load bookmarks:', e);
         }
 
-        setUser(data.user);
+        setUser({ name: data.user.name, email: data.user.email, newsletterSubscribed: data.user.newsletterSubscribed || false });
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
@@ -67,6 +68,11 @@ export default function DashboardPage() {
     <main className="content-wrapper">
       {/* Hero Section */}
       <section className="splash-screen">
+        {/* Newsletter subscription banner — only shown to non-subscribers */}
+        {user && !user.newsletterSubscribed && (
+          <NewsletterBanner userEmail={user.email} userName={user.name} />
+        )}
+
         <h1>Welcome, {user.name}!</h1>
         <p>Your personalized fitness dashboard</p>
       </section>
