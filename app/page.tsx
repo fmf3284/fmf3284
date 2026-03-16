@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { CategoryCarousel, LocationsCarousel, MapSection } from '@/components/ClientDynamicWrapper';
+import { CategoryCarousel, MapSection } from '@/components/ClientDynamicWrapper';
 
 export const metadata: Metadata = {
   title: 'Find Your Fitness Anywhere | Find My Fitness',
@@ -162,9 +162,6 @@ export default function HomePage() {
         <CategoryCarousel />
       </Suspense>
 
-      <Suspense fallback={<div className="locations-section animate-pulse bg-[#1a1a2e] h-96" />}>
-        <LocationsCarousel />
-      </Suspense>
 
       <Suspense fallback={<div className="map-section animate-pulse bg-[#1a1a2e] h-96" />}>
         <MapSection />
