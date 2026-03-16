@@ -17,6 +17,26 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Gym': '💪', 'Yoga': '🧘', 'Pilates': '🤸', 'CrossFit': '🏋️',
   'Swimming': '🏊', 'Cycling': '🚴', 'Boxing': '🥊', 'Martial Arts': '🥋',
   'Dance': '💃', 'Climbing': '🧗', 'Tennis': '🎾', 'Wellness': '🌿',
+  'Kickboxing': '🦵', 'Barre': '🩰', 'Rehabilitation': '🩺', 'Fitness': '🏃',
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  'Gym':            '#ef4444', // red
+  'Yoga':           '#22c55e', // green
+  'Pilates':        '#3b82f6', // blue
+  'CrossFit':       '#f97316', // orange
+  'Swimming':       '#06b6d4', // cyan
+  'Cycling':        '#f59e0b', // amber
+  'Boxing':         '#f43f5e', // rose
+  'Kickboxing':     '#fb7185', // light rose
+  'Martial Arts':   '#b91c1c', // dark red
+  'Dance':          '#d946ef', // fuchsia
+  'Climbing':       '#78716c', // stone
+  'Tennis':         '#84cc16', // lime
+  'Barre':          '#a78bfa', // purple
+  'Wellness':       '#14b8a6', // teal
+  'Rehabilitation': '#0ea5e9', // sky
+  'Fitness':        '#8b5cf6', // violet (default)
 };
 
 export default function MapSection() {
@@ -47,6 +67,7 @@ export default function MapSection() {
 
   const addMarker = useCallback((place: MapMarker) => {
     if (!googleMapRef.current) return;
+    const color = CATEGORY_COLORS[place.type] || '#8b5cf6';
     const marker = new google.maps.Marker({
       position: { lat: place.lat, lng: place.lng },
       map: googleMapRef.current,
@@ -54,8 +75,8 @@ export default function MapSection() {
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
         scale: 10,
-        fillColor: '#8b5cf6',
-        fillOpacity: 1,
+        fillColor: color,
+        fillOpacity: 0.9,
         strokeColor: '#ffffff',
         strokeWeight: 2,
       },
@@ -119,11 +140,12 @@ export default function MapSection() {
         rating: p.rating,
       }));
 
-      // Sort by rating descending
+      // Sort by rating descending and cap at 60
       newMarkers.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      const capped = newMarkers.slice(0, 60);
 
-      setMarkers(newMarkers);
-      newMarkers.forEach(m => addMarker(m));
+      setMarkers(capped);
+      capped.forEach(m => addMarker(m));
 
       const bounds = new google.maps.LatLngBounds();
       newMarkers.forEach(m => bounds.extend({ lat: m.lat, lng: m.lng }));
@@ -131,22 +153,33 @@ export default function MapSection() {
     };
 
     keywords.forEach(keyword => {
+      const handlePage = (
+        results: google.maps.places.PlaceResult[] | null,
+        status: google.maps.places.PlacesServiceStatus,
+        pagination: google.maps.places.PlaceSearchPagination | null
+      ) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          results.forEach(p => {
+            if (p.place_id && p.geometry?.location) {
+              allResults.set(p.place_id, p);
+            }
+          });
+          // Fetch next page if available (up to 3 pages = 60 results per keyword)
+          if (pagination?.hasNextPage) {
+            setTimeout(() => pagination.nextPage(), 300);
+            return; // don't finalize yet
+          }
+        }
+        finalize();
+      };
+
       placesServiceRef.current!.nearbySearch(
         {
           location: new google.maps.LatLng(location.lat, location.lng),
           radius: 8000,
           keyword,
         },
-        (results, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            results.forEach(p => {
-              if (p.place_id && p.geometry?.location) {
-                allResults.set(p.place_id, p);
-              }
-            });
-          }
-          finalize();
-        }
+        handlePage
       );
     });
   }, [addMarker]);
@@ -337,6 +370,16 @@ export default function MapSection() {
           </button>
         </div>
 
+        {/* Color legend */}
+        <div className="flex flex-wrap gap-2 max-w-2xl mx-auto mb-4 justify-center">
+          {Object.entries(CATEGORY_COLORS).slice(0, 8).map(([cat, color]) => (
+            <span key={cat} className="flex items-center gap-1.5 text-xs text-gray-400">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+              {cat}
+            </span>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Map */}
           <div className="lg:col-span-2 rounded-2xl overflow-hidden border"
@@ -361,7 +404,10 @@ export default function MapSection() {
               </div>
             ) : (
               <>
-                <p className="text-gray-400 text-xs px-1">{markers.length} locations found nearby</p>
+                <p className="text-gray-400 text-xs px-1">
+                  {markers.length} fitness locations nearby
+                  {markers.length >= 60 && <span className="text-violet-400"> (top 60 shown)</span>}
+                </p>
                 {markers.map(marker => (
                   <button
                     key={marker.id}
@@ -386,7 +432,7 @@ export default function MapSection() {
                       </span>
                       <div className="min-w-0">
                         <p className="text-white font-semibold text-sm leading-tight truncate">{marker.name}</p>
-                        <p className="text-violet-400 text-xs mt-0.5">{marker.type}</p>
+                        <p className="text-xs mt-0.5 font-medium" style={{ color: CATEGORY_COLORS[marker.type] || '#8b5cf6' }}>{marker.type}</p>
                         {marker.address && (
                           <p className="text-gray-500 text-xs mt-1 truncate">{marker.address}</p>
                         )}
@@ -401,6 +447,19 @@ export default function MapSection() {
             )}
           </div>
         </div>
+
+        {/* Category color legend */}
+        {markers.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2 justify-center">
+            {Array.from(new Set(markers.map(m => m.type))).sort().map(cat => (
+              <span key={cat} className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+                style={{ background: `${CATEGORY_COLORS[cat] || '#8b5cf6'}22`, border: `1px solid ${CATEGORY_COLORS[cat] || '#8b5cf6'}66`, color: CATEGORY_COLORS[cat] || '#8b5cf6' }}>
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLORS[cat] || '#8b5cf6' }} />
+                {CATEGORY_ICONS[cat] || '🏃'} {cat}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* CTA */}
         <div className="text-center mt-8">
