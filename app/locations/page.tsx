@@ -128,7 +128,7 @@ export default function LocationsPage() {
   const [realPlaces, setRealPlaces] = useState<FitnessLocation[]>([]);
   const [isSearching, setIsSearching] = useState(true); // Start with true - searching on load
   const [searchedAddress, setSearchedAddress] = useState('');
-  const [searchRadius, setSearchRadius] = useState(10); // miles
+  const [searchRadius, setSearchRadius] = useState(5); // miles
 
   // Map state
   const [showMap, setShowMap] = useState(true);
