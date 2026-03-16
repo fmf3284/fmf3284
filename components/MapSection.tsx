@@ -176,7 +176,7 @@ export default function MapSection() {
       placesServiceRef.current!.nearbySearch(
         {
           location: new google.maps.LatLng(location.lat, location.lng),
-          radius: 8000,
+          radius: 8047, // 5 miles
           keyword,
         },
         handlePage
