@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { CategoryCarousel, MapSection } from '@/components/ClientDynamicWrapper';
+import { CategoryCarousel, LocationsCarousel, MapSection } from '@/components/ClientDynamicWrapper';
 
 export const metadata: Metadata = {
   title: 'Find Your Fitness Anywhere | Find My Fitness',
@@ -99,6 +99,36 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* How It Works */}
+      <section className="py-20 bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a]">
+        <div className="max-w-screen-xl mx-auto px-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+            <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
+              How It Works
+            </span>
+          </h2>
+          <p className="text-gray-400 text-center mb-12">Three simple steps to find your fitness home</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <StepCard
+              number="1"
+              title="Search"
+              description="Enter your location and browse thousands of fitness options near you."
+            />
+            <StepCard
+              number="2"
+              title="Compare"
+              description="Read reviews, check amenities, and compare prices to find the perfect fit."
+            />
+            <StepCard
+              number="3"
+              title="Join"
+              description="Contact facilities directly or claim exclusive deals through our platform."
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section className="py-20 bg-[#0f0f1a]">
         <div className="max-w-screen-xl mx-auto px-4">
@@ -132,40 +162,14 @@ export default function HomePage() {
         <CategoryCarousel />
       </Suspense>
 
+      <Suspense fallback={<div className="locations-section animate-pulse bg-[#1a1a2e] h-96" />}>
+        <LocationsCarousel />
+      </Suspense>
 
       <Suspense fallback={<div className="map-section animate-pulse bg-[#1a1a2e] h-96" />}>
         <MapSection />
       </Suspense>
 
-      {/* How It Works */}
-      <section className="py-20 bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a]">
-        <div className="max-w-screen-xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-            <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-              How It Works
-            </span>
-          </h2>
-          <p className="text-gray-400 text-center mb-12">Three simple steps to find your fitness home</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <StepCard
-              number="1"
-              title="Search"
-              description="Enter your location and browse thousands of fitness options near you."
-            />
-            <StepCard
-              number="2"
-              title="Compare"
-              description="Read reviews, check amenities, and compare prices to find the perfect fit."
-            />
-            <StepCard
-              number="3"
-              title="Join"
-              description="Contact facilities directly or claim exclusive deals through our platform."
-            />
-          </div>
-        </div>
-      </section>
 
       {/* Blog & Deals Section */}
       <section className="py-20 bg-[#0f0f1a]">
