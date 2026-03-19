@@ -1,5 +1,6 @@
 'use client';
 import { useToast } from '@/components/Toast';
+import RichEditor from '@/components/RichEditor';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,7 +10,6 @@ interface BlogPost {
   id: string;
   title: string;
   slug: string;
-  excerpt: string | null;
   content: string;
   category: string | null;
   coverImage: string | null;
@@ -35,7 +35,6 @@ export default function AdminBlogPage() {
   const [form, setForm] = useState({
     title: '',
     content: '',
-    excerpt: '',
     category: 'Fitness Tips',
     coverImage: '',
     authorName: '',
@@ -79,7 +78,6 @@ export default function AdminBlogPage() {
     setForm({
       title: '',
       content: '',
-      excerpt: '',
       category: 'Fitness Tips',
       coverImage: '',
       authorName: '',
@@ -94,7 +92,6 @@ export default function AdminBlogPage() {
     setForm({
       title: post.title,
       content: post.content,
-      excerpt: post.excerpt || '',
       category: post.category || 'Fitness Tips',
       coverImage: post.coverImage || '',
       authorName: post.authorName || '',
@@ -244,7 +241,6 @@ export default function AdminBlogPage() {
                   <tr key={post.id} className={!post.isPublished ? 'opacity-70' : ''}>
                     <td className="px-4 py-4">
                       <div className="font-medium text-white">{post.title}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-xs">{post.excerpt}</div>
                     </td>
                     <td className="px-4 py-4">
                       <span className="px-2 py-1 bg-gray-700 rounded text-xs">{post.category || 'Uncategorized'}</span>
@@ -332,25 +328,15 @@ export default function AdminBlogPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Excerpt</label>
-                <input
-                  type="text"
-                  value={form.excerpt}
-                  onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                  placeholder="A brief summary of your post..."
-                />
-              </div>
+
 
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Content *</label>
-                <textarea
+                <label className="block text-sm text-gray-400 mb-2">Content *</label>
+                <RichEditor
                   value={form.content}
-                  onChange={(e) => setForm({ ...form, content: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white font-mono text-sm"
-                  rows={18}
-                  placeholder="Write your post content here... (Markdown supported)"
+                  onChange={(html) => setForm({ ...form, content: html })}
+                  placeholder="Write your post content here..."
+                  minHeight={420}
                 />
               </div>
 
