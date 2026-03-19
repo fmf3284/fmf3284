@@ -135,7 +135,7 @@ export default function AdminLogsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#13131a] text-white" style={{paddingTop: "120px"}}>
+    <div className="min-h-screen bg-[#13131a] text-white" style={{paddingTop: "140px"}}>
       {/* Sticky header */}
       <div className="sticky z-20 bg-[#13131a] border-b border-violet-900/30 px-6 py-3 flex flex-wrap justify-between items-center gap-3"
         style={{ top: '112px' }}>
