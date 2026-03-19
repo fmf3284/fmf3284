@@ -9,6 +9,19 @@ interface RichEditorProps {
   minHeight?: number;
 }
 
+const BG_COLORS = [
+  { label: 'None',       value: 'transparent' },
+  { label: 'Dark',       value: '#1a1a2e' },
+  { label: 'Violet',     value: 'rgba(139,92,246,0.3)' },
+  { label: 'Blue',       value: 'rgba(96,165,250,0.3)' },
+  { label: 'Green',      value: 'rgba(74,222,128,0.3)' },
+  { label: 'Yellow',     value: 'rgba(251,191,36,0.3)' },
+  { label: 'Orange',     value: 'rgba(251,146,60,0.3)' },
+  { label: 'Red',        value: 'rgba(248,113,113,0.3)' },
+  { label: 'Pink',       value: 'rgba(244,114,182,0.3)' },
+  { label: 'Gray',       value: 'rgba(156,163,175,0.2)' },
+];
+
 const FONT_COLORS = [
   { label: 'White',   value: '#ffffff' },
   { label: 'Gray',    value: '#9ca3af' },
@@ -33,6 +46,7 @@ const FONT_SIZES = ['14px', '16px', '18px', '20px', '24px', '28px', '32px'];
 export default function RichEditor({ value, onChange, placeholder = 'Write your content here...', minHeight = 400 }: RichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showBgColor, setShowBgColor] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [showFontSize, setShowFontSize] = useState(false);
   const [activeFormats, setActiveFormats] = useState<Record<string, boolean>>({});
@@ -93,6 +107,16 @@ export default function RichEditor({ value, onChange, placeholder = 'Write your 
     restoreSelection();
     exec('insertText', emoji);
     setShowEmoji(false);
+  };
+
+  const setBgColor = (color: string) => {
+    restoreSelection();
+    if (color === 'transparent') {
+      exec('removeFormat');
+    } else {
+      exec('hiliteColor', color);
+    }
+    setShowBgColor(false);
   };
 
   const setColor = (color: string) => {
@@ -357,10 +381,10 @@ Rules: Add evidence-based fitness tips, mention relevant muscle groups or body s
           )}
         </div>
 
-        {/* Color picker */}
+        {/* Text Color picker */}
         <div className="relative">
           <button type="button"
-            onClick={() => { saveSelection(); setShowColorPicker(!showColorPicker); setShowFontSize(false); setShowEmoji(false); }}
+            onClick={() => { saveSelection(); setShowColorPicker(!showColorPicker); setShowBgColor(false); setShowFontSize(false); setShowEmoji(false); }}
             className={btnClass()} title="Text Color">
             <span className="flex items-center gap-1">
               A
@@ -374,6 +398,29 @@ Rules: Add evidence-based fitness tips, mention relevant muscle groups or body s
                 <button key={c.value} type="button" onClick={() => setColor(c.value)}
                   title={c.label}
                   className="w-6 h-6 rounded-full border-2 border-transparent hover:border-white transition-all"
+                  style={{ background: c.value }} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Background Color picker */}
+        <div className="relative">
+          <button type="button"
+            onClick={() => { saveSelection(); setShowBgColor(!showBgColor); setShowColorPicker(false); setShowFontSize(false); setShowEmoji(false); }}
+            className={btnClass()} title="Highlight / Background Color">
+            <span className="flex items-center gap-1">
+              <span className="text-xs font-bold">BG</span>
+              <span className="w-3 h-1.5 rounded-sm inline-block" style={{ background: 'linear-gradient(90deg,#fbbf24,#4ade80,#60a5fa,#f472b6)' }} />
+            </span>
+          </button>
+          {showBgColor && (
+            <div className="absolute top-full left-0 z-50 mt-1 rounded-lg p-2 grid grid-cols-5 gap-1"
+              style={{ background: '#1e1e2d', border: '1px solid rgba(139,92,246,0.3)' }}>
+              {BG_COLORS.map(c => (
+                <button key={c.value} type="button" onClick={() => setBgColor(c.value)}
+                  title={c.label}
+                  className="w-6 h-6 rounded border-2 border-transparent hover:border-white transition-all"
                   style={{ background: c.value }} />
               ))}
             </div>
@@ -515,7 +562,7 @@ Rules: Add evidence-based fitness tips, mention relevant muscle groups or body s
       </div>
 
       <style>{`
-        [contenteditable] { background: #111118 !important; color: #e5e7eb !important; }
+        [contenteditable] { background: #111118; color: #e5e7eb; }
         [contenteditable]:empty:before {
           content: attr(data-placeholder);
           color: #4b5563;
