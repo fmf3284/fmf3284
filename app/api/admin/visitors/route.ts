@@ -1,41 +1,80 @@
-'use client';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/server/db/prisma';
+import { getRequestUser } from '@/server/auth/session';
 
-import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getRequestUser(request);
+    if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
-// Generate or retrieve anonymous session ID
-function getSessionId(): string {
-  if (typeof window === 'undefined') return '';
-  let sid = sessionStorage.getItem('_fmf_sid');
-  if (!sid) {
-    sid = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    sessionStorage.setItem('_fmf_sid', sid);
-  }
-  return sid;
-}
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit') || '200');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const days = parseInt(url.searchParams.get('days') || '30');
 
-export default function PageTracker() {
-  const pathname = usePathname();
+    const since = new Date();
+    since.setDate(since.getDate() - days);
 
-  useEffect(() => {
-    // Skip admin pages
-    if (pathname.startsWith('/admin')) return;
-
-    const sessionId = getSessionId();
-    if (!sessionId) return;
-
-    // Fire and forget — never block the page
-    fetch('/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        page: pathname,
-        referrer: document.referrer || null,
-        sessionId,
+    const [logs, total, uniqueVisitors, topPages, topCountries, deviceBreakdown] = await Promise.all([
+      // Recent logs
+      prisma.visitorLog.findMany({
+        where: { createdAt: { gte: since } },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: (page - 1) * limit,
       }),
-    }).catch(() => {}); // silently ignore errors
 
-  }, [pathname]);
+      // Total visits
+      prisma.visitorLog.count({ where: { createdAt: { gte: since } } }),
 
-  return null; // renders nothing
+      // Unique visitors by sessionId
+      prisma.visitorLog.groupBy({
+        by: ['sessionId'],
+        where: { createdAt: { gte: since } },
+        _count: true,
+      }).then(r => r.length),
+
+      // Top pages
+      prisma.visitorLog.groupBy({
+        by: ['page'],
+        where: { createdAt: { gte: since } },
+        _count: { page: true },
+        orderBy: { _count: { page: 'desc' } },
+        take: 10,
+      }),
+
+      // Top countries
+      prisma.visitorLog.groupBy({
+        by: ['country', 'countryCode'],
+        where: { createdAt: { gte: since }, country: { not: null } },
+        _count: { country: true },
+        orderBy: { _count: { country: 'desc' } },
+        take: 10,
+      }),
+
+      // Device breakdown
+      prisma.visitorLog.groupBy({
+        by: ['device'],
+        where: { createdAt: { gte: since } },
+        _count: { device: true },
+      }),
+    ]);
+
+    return NextResponse.json({
+      logs,
+      stats: {
+        total,
+        uniqueVisitors,
+        topPages,
+        topCountries,
+        deviceBreakdown,
+      },
+      pagination: { page, limit, total },
+    });
+  } catch (error) {
+    console.error('Visitor logs error:', error);
+    return NextResponse.json({ error: 'Failed to fetch visitor logs' }, { status: 500 });
+  }
 }
