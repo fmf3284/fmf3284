@@ -41,10 +41,10 @@ function generateTempPassword(): string {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: userId } = await params;
+    const { id: userId } = await context.params;
     const currentUser = await getRequestUser(request);
     if (!currentUser || currentUser.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
@@ -76,10 +76,10 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: userId } = await params;
+    const { id: userId } = await context.params;
     const currentUser = await getRequestUser(request);
 
     if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -314,10 +314,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: userId } = await params;
+    const { id: userId } = await context.params;
     const currentUser = await getRequestUser(request);
 
     if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
