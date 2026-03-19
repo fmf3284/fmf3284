@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
-const isSuperAdmin = (user: any) => user?.role === 'super_admin';
-
 
 /**
  * GET /api/admin/blog
@@ -11,8 +9,8 @@ const isSuperAdmin = (user: any) => user?.role === 'super_admin';
 export async function GET(request: NextRequest) {
   try {
     const user = await getRequestUser(request);
-    if (!user || !isSuperAdmin(user)) {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+    if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const posts = await prisma.blogPost.findMany({
@@ -33,12 +31,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getRequestUser(request);
-    if (!user || !isSuperAdmin(user)) {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+    if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { title, content, excerpt, category, coverImage, isPublished, authorName, tags } = body;
+    const { title, content, excerpt, category, coverImage, isPublished } = body;
 
     if (!title || !content) {
       return NextResponse.json({ error: 'Title and content are required' }, { status: 400 });
@@ -59,8 +57,7 @@ export async function POST(request: NextRequest) {
         category,
         coverImage,
         authorId: user.id,
-        authorName: authorName || user.name || 'Find My Fitness',
-        tags: tags || null,
+        authorName: user.name || 'Admin',
         isPublished: isPublished || false,
         publishedAt: isPublished ? new Date() : null,
       },
