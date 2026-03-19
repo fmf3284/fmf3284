@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
+import { logActivity } from '@/server/utils/activityLogger';
 import { getRequestUser } from '@/server/auth/session';
 import { hashPassword } from '@/server/utils/security';
 import { EmailService } from '@/server/services/email.service';
@@ -280,6 +281,7 @@ export async function PATCH(
         return NextResponse.json({ error: '🔒 Only Super Admin can promote users to Admin.', protected: true }, { status: 403 });
       }
       const updatedUser = await prisma.user.update({ where: { id: userId }, data: { role }, select: { id: true, email: true, name: true, role: true } });
+      await logActivity({ userId, action: 'role_changed', details: { newRole: role, changedBy: currentUser.email }, ipAddress: request.headers.get('x-forwarded-for'), userAgent: request.headers.get('user-agent') });
       return NextResponse.json({ success: true, user: updatedUser });
     }
 
