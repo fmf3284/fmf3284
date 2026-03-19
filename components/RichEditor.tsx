@@ -37,6 +37,7 @@ export default function RichEditor({ value, onChange, placeholder = 'Write your 
   const [showFontSize, setShowFontSize] = useState(false);
   const [activeFormats, setActiveFormats] = useState<Record<string, boolean>>({});
   const savedSelection = useRef<Range | null>(null);
+  const [formatting, setFormatting] = useState(false);
   const isInitialized = useRef(false);
 
   // Initialize content once
@@ -130,7 +131,146 @@ export default function RichEditor({ value, onChange, placeholder = 'Write your 
     exec('insertHTML', '<hr style="border:none;border-top:1px solid rgba(139,92,246,0.4);margin:16px 0;"><p><br></p>');
   };
 
+  const autoFormat = async () => {
+    if (!editorRef.current) return;
+    const rawText = editorRef.current.innerText.trim();
+    if (!rawText) return;
+
+    setFormatting(true);
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4000,
+          messages: [{
+            role: 'user',
+            content: `You are a professional blog editor. Take the following raw blog content and reformat it into a clean, professional, well-structured HTML blog post.
+
+Rules:
+- Use <h2> for main section headings, <h3> for sub-headings
+- Use <p> for paragraphs with proper spacing
+- Use <ul><li> for bullet points, <ol><li> for numbered steps
+- Use <strong> for key terms and important points
+- Use <blockquote> for quotes or key takeaways
+- Add a clear intro paragraph if missing
+- Add a conclusion paragraph if missing
+- Keep all the original information — do NOT add new facts
+- Return ONLY the HTML content, no markdown, no code blocks, no explanation
+
+Raw content:
+${rawText}`,
+          }],
+        }),
+      });
+
+      const data = await res.json();
+      const html = data.content?.[0]?.text || '';
+      if (html && editorRef.current) {
+        editorRef.current.innerHTML = html;
+        onChange(html);
+      }
+    } catch (err) {
+      console.error('Auto-format failed:', err);
+    } finally {
+      setFormatting(false);
+    }
+  };
+
   const clearFormat = () => exec('removeFormat');
+
+  // Auto-format shortcuts — type trigger + Space to activate
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === ' ') {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+
+      const range = sel.getRangeAt(0);
+      const node = range.startContainer;
+      if (node.nodeType !== Node.TEXT_NODE) return;
+
+      const text = node.textContent || '';
+      const cursorPos = range.startOffset;
+      const lineText = text.substring(0, cursorPos);
+
+      const triggers: { pattern: RegExp; action: () => void }[] = [
+        // # Heading 1
+        { pattern: /^#$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('formatBlock', false, 'h1');
+        }},
+        // ## Heading 2
+        { pattern: /^##$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('formatBlock', false, 'h2');
+        }},
+        // ### Heading 3
+        { pattern: /^###$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('formatBlock', false, 'h3');
+        }},
+        // - or * for bullet list
+        { pattern: /^[-*]$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('insertUnorderedList', false);
+        }},
+        // 1. for numbered list
+        { pattern: /^1\.$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('insertOrderedList', false);
+        }},
+        // > for blockquote
+        { pattern: /^>$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('formatBlock', false, 'blockquote');
+        }},
+        // --- for divider
+        { pattern: /^---$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('insertHTML', false, '<hr style="border:none;border-top:1px solid rgba(139,92,246,0.4);margin:16px 0;"><p><br></p>');
+          e.preventDefault();
+          onChange(editorRef.current?.innerHTML || '');
+          return;
+        }},
+        // **text for bold toggle hint
+        { pattern: /^\*\*$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('bold', false);
+        }},
+        // ` for inline code style
+        { pattern: /^`$/, action: () => {
+          (node as Text).textContent = '';
+          document.execCommand('insertHTML', false, '<code style="background:rgba(139,92,246,0.15);padding:2px 6px;border-radius:4px;font-family:monospace;color:#a78bfa;"></code>');
+          e.preventDefault();
+          onChange(editorRef.current?.innerHTML || '');
+          return;
+        }},
+      ];
+
+      for (const { pattern, action } of triggers) {
+        if (pattern.test(lineText.trim())) {
+          e.preventDefault();
+          action();
+          onChange(editorRef.current?.innerHTML || '');
+          return;
+        }
+      }
+    }
+
+    // Enter after --- typed alone should insert HR
+    if (e.key === 'Enter') {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const node = sel.getRangeAt(0).startContainer;
+      if (node.textContent?.trim() === '---') {
+        e.preventDefault();
+        (node as Text).textContent = '';
+        document.execCommand('insertHTML', false, '<hr style="border:none;border-top:1px solid rgba(139,92,246,0.4);margin:16px 0;"><p><br></p>');
+        onChange(editorRef.current?.innerHTML || '');
+      }
+    }
+  };
 
   const btnClass = (active?: boolean) =>
     `px-2 py-1.5 rounded text-sm transition-all ${
@@ -252,6 +392,33 @@ export default function RichEditor({ value, onChange, placeholder = 'Write your 
         {/* Undo/Redo */}
         <button type="button" onClick={() => exec('undo')} className={btnClass()} title="Undo">↩</button>
         <button type="button" onClick={() => exec('redo')} className={btnClass()} title="Redo">↪</button>
+
+        {divider}
+
+        {/* AI Auto-Format */}
+        <button
+          type="button"
+          onClick={autoFormat}
+          disabled={formatting}
+          title="Auto-format the entire post using AI — makes it clean and professional"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-semibold transition-all disabled:opacity-60 ${
+            formatting
+              ? 'bg-violet-800 text-violet-300'
+              : 'bg-violet-600 hover:bg-violet-500 text-white'
+          }`}
+        >
+          {formatting ? (
+            <>
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Formatting...
+            </>
+          ) : (
+            <>✨ Auto-Format</>
+          )}
+        </button>
       </div>
 
       {/* Editor area */}
@@ -260,6 +427,7 @@ export default function RichEditor({ value, onChange, placeholder = 'Write your 
         contentEditable
         suppressContentEditableWarning
         onInput={() => onChange(editorRef.current?.innerHTML || '')}
+        onKeyDown={handleKeyDown}
         onKeyUp={updateActiveFormats}
         onMouseUp={updateActiveFormats}
         onClick={() => { setShowColorPicker(false); setShowEmoji(false); setShowFontSize(false); }}
@@ -273,6 +441,18 @@ export default function RichEditor({ value, onChange, placeholder = 'Write your 
           lineHeight: '1.7',
         }}
       />
+
+      {/* Auto-format hints */}
+      <div className="flex flex-wrap gap-3 px-3 py-1.5 text-xs border-b"
+        style={{ background: 'rgba(139,92,246,0.05)', borderColor: 'rgba(139,92,246,0.15)', color: '#6b7280' }}>
+        <span title="Type then Space"><kbd className="px-1 py-0.5 rounded text-xs" style={{background:'rgba(255,255,255,0.08)'}}>#</kbd> H1</span>
+        <span title="Type then Space"><kbd className="px-1 py-0.5 rounded text-xs" style={{background:'rgba(255,255,255,0.08)'}}># #</kbd> H2</span>
+        <span title="Type then Space"><kbd className="px-1 py-0.5 rounded text-xs" style={{background:'rgba(255,255,255,0.08)'}}>-</kbd> Bullet</span>
+        <span title="Type then Space"><kbd className="px-1 py-0.5 rounded text-xs" style={{background:'rgba(255,255,255,0.08)'}}>1.</kbd> List</span>
+        <span title="Type then Space"><kbd className="px-1 py-0.5 rounded text-xs" style={{background:'rgba(255,255,255,0.08)'}}>&gt;</kbd> Quote</span>
+        <span title="Type then Space"><kbd className="px-1 py-0.5 rounded text-xs" style={{background:'rgba(255,255,255,0.08)'}}>---</kbd> Divider</span>
+        <span title="Type then Space"><kbd className="px-1 py-0.5 rounded text-xs" style={{background:'rgba(255,255,255,0.08)'}}>`</kbd> Code</span>
+      </div>
 
       <style>{`
         [contenteditable]:empty:before {
