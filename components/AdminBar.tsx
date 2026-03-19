@@ -14,7 +14,7 @@ export default function AdminBar() {
       try {
         const response = await fetch('/api/auth/session');
         const data = await response.json();
-        if (data.authenticated && data.user?.role === 'admin') {
+        if (data.authenticated && (data.user?.role === 'admin' || data.user?.role === 'super_admin')) {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
@@ -97,12 +97,6 @@ export default function AdminBar() {
                 className={`px-3 py-1.5 rounded-lg transition-all ${pathname === '/admin/logs' ? 'bg-yellow-500/30 text-yellow-300 font-semibold' : 'hover:bg-white/10'}`}
               >
                 🕐 Logs
-              </Link>
-              <Link 
-                href="/admin/newsletter" 
-                className={`px-3 py-1.5 rounded-lg transition-all ${pathname === '/admin/newsletter' ? 'bg-yellow-500/30 text-yellow-300 font-semibold' : 'hover:bg-white/10'}`}
-              >
-                📧 Newsletter
               </Link>
             </nav>
           </div>
