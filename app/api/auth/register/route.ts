@@ -17,7 +17,7 @@ import {
 const registerRateLimiter = rateLimit(rateLimitPresets.auth);
 
 // Super Admin auto-verification
-const SUPER_ADMIN_EMAIL = 'moh.alneama@yahoo.com';
+const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || '';
 
 export async function POST(request: NextRequest) {
   const rateLimitResponse = await registerRateLimiter(request);
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { email, password, full_name, name, newsletter_opt_in } = body;
+    const { email, password, full_name, name } = body;
     
     // Get IP and user agent
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
@@ -110,29 +110,6 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true, email: true, name: true, role: true, status: true, emailVerified: true },
     });
-
-    // Save newsletter subscription if opted in
-    if (newsletter_opt_in && !isSuperAdmin) {
-      try {
-        await prisma.newsletterSubscriber.upsert({
-          where: { email: sanitizedEmail },
-          update: { isActive: true, unsubscribedAt: null, userId: newUser.id, source: 'register' },
-          create: {
-            email: sanitizedEmail,
-            name: userName,
-            source: 'register',
-            userId: newUser.id,
-            isActive: true,
-          },
-        });
-        await prisma.user.update({
-          where: { id: newUser.id },
-          data: { newsletterSubscribed: true },
-        });
-      } catch (e) {
-        console.error('Failed to save newsletter subscription:', e);
-      }
-    }
 
     // Log registration activity
     try {
