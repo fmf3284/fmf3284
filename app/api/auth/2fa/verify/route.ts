@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
+import { logActivity } from '@/server/utils/activityLogger';
 import {
   createSessionToken,
   getSessionDurationSeconds,
