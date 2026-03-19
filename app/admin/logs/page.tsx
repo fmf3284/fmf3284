@@ -237,9 +237,19 @@ export default function AdminLogsPage() {
                             {meta.icon} {meta.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-400 text-xs max-w-[200px]">
+                        <td className="px-4 py-3 text-gray-400 text-xs max-w-[220px]">
+                          {log.action === 'view_location' && details.locationName && (
+                            <div>
+                              <p className="text-violet-300 font-medium truncate">📍 {details.locationName}</p>
+                              {details.address && <p className="text-gray-500 truncate">{details.address}{details.city ? `, ${details.city}` : ''}</p>}
+                              {details.category && <p className="text-gray-600 text-xs">{details.category}</p>}
+                            </div>
+                          )}
+                          {log.action === 'search' && details.query && (
+                            <p className="truncate">🔍 {details.query}</p>
+                          )}
                           {details.reason && <span>Reason: {details.reason}</span>}
-                          {details.attempts && <span className="text-red-400 ml-1">({details.attempts} attempts)</span>}
+                          {details.remainingAttempts !== undefined && <span className="text-red-400 ml-1">({details.remainingAttempts} left)</span>}
                           {details.newRole && <span>→ {details.newRole}</span>}
                           {details.method && <span>{details.method}</span>}
                         </td>
