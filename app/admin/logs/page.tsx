@@ -11,6 +11,13 @@ interface ActivityLog {
   details: string | null;
   ipAddress: string | null;
   userAgent: string | null;
+  country: string | null;
+  countryCode: string | null;
+  city: string | null;
+  region: string | null;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
   createdAt: string;
   user: { id: string; name: string | null; email: string; role: string };
 }
@@ -204,7 +211,7 @@ export default function AdminLogsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[#2a2a3d]">
                   <tr>
-                    {['Time', 'User', 'Action', 'Details', 'IP Address'].map(h => (
+                    {['Time', 'User', 'Action', 'Location', 'IP', 'Device', 'Details'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -236,7 +243,21 @@ export default function AdminLogsPage() {
                           {details.newRole && <span>→ {details.newRole}</span>}
                           {details.method && <span>{details.method}</span>}
                         </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            {log.countryCode && (
+                              <img src={`https://flagcdn.com/24x18/${log.countryCode.toLowerCase()}.png`}
+                                alt="" className="rounded-sm flex-shrink-0" style={{width:20,height:15}}
+                                onError={(e) => {(e.target as HTMLImageElement).style.display='none'}} />
+                            )}
+                            <span className="text-gray-400 text-xs">{[log.city, log.country].filter(Boolean).join(', ') || '—'}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-gray-500 font-mono text-xs">{log.ipAddress || '—'}</td>
+                        <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                          {log.device && <span>{log.device === 'mobile' ? '📱' : log.device === 'tablet' ? '📋' : '🖥️'} </span>}
+                          {log.browser} {log.os ? `· ${log.os}` : ''}
+                        </td>
                       </tr>
                     );
                   })}
@@ -293,9 +314,18 @@ export default function AdminLogsPage() {
                           </td>
                           <td className="px-4 py-3 text-red-400 font-mono text-xs">{log.ipAddress || '—'}</td>
                           <td className="px-4 py-3 text-gray-400 text-xs">
-                            {details.attempts && <span className="text-red-400">{details.attempts} attempts</span>}
-                            {details.reason && <span> {details.reason}</span>}
-                            {details.lockedUntil && <span className="text-orange-400"> locked</span>}
+                            <div className="flex items-center gap-1 mb-1">
+                              {log.countryCode && (
+                                <img src={`https://flagcdn.com/24x18/${log.countryCode.toLowerCase()}.png`}
+                                  alt="" className="rounded-sm" style={{width:18,height:13}}
+                                  onError={(e) => {(e.target as HTMLImageElement).style.display='none'}} />
+                              )}
+                              <span className="text-xs">{[log.city, log.country].filter(Boolean).join(', ') || ''}</span>
+                            </div>
+                            {details.attempts && <span className="text-red-400">{details.attempts} attempts · </span>}
+                            {details.remainingAttempts !== undefined && <span className="text-orange-400">{details.remainingAttempts} remaining · </span>}
+                            {details.reason && <span>{details.reason}</span>}
+                            {log.browser && <span className="text-gray-500"> · {log.browser} on {log.os}</span>}
                           </td>
                         </tr>
                       );
