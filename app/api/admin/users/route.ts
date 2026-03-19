@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
 
-export const dynamic = 'force-dynamic';
-
 /**
  * GET /api/admin/users
  * Get all users (including soft-deleted)
@@ -19,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    if (user.role !== 'admin') {
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
