@@ -17,7 +17,7 @@ import {
 const registerRateLimiter = rateLimit(rateLimitPresets.auth);
 
 // Super Admin auto-verification
-const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || '';
+const SUPER_ADMIN_EMAIL = 'moh.alneama@yahoo.com';
 
 export async function POST(request: NextRequest) {
   const rateLimitResponse = await registerRateLimiter(request);
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         name: userName,
         password: hashedPassword,
         status: isSuperAdmin ? 'active' : 'pending', // Super admin is auto-activated
-        role: isSuperAdmin ? 'admin' : 'user', // Super admin gets admin role
+        role: isSuperAdmin ? 'super_admin' : 'user',
         emailVerified: isSuperAdmin, // Super admin is auto-verified
         verificationToken: isSuperAdmin ? null : verificationToken,
         verificationExpires: isSuperAdmin ? null : verificationExpires,
