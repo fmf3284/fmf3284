@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
-const isSuperAdmin = (user: any) => user?.role === 'super_admin';
-
 
 /**
  * GET /api/admin/deals/[id]
@@ -10,15 +8,15 @@ const isSuperAdmin = (user: any) => user?.role === 'super_admin';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
-    if (!user || !isSuperAdmin(user)) {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const deal = await prisma.deal.findUnique({ where: { id } });
 
     if (!deal) {
@@ -38,15 +36,15 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
-    if (!user || !isSuperAdmin(user)) {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const body = await request.json();
 
     const deal = await prisma.deal.update({
@@ -70,15 +68,15 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
-    if (!user || !isSuperAdmin(user)) {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     await prisma.deal.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
