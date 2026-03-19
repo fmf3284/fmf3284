@@ -21,6 +21,8 @@ interface BlogPost {
   createdAt: string;
 }
 
+const SUPER_ADMIN_EMAIL = 'moh.alneama@yahoo.com';
+
 const categories = ['Fitness Tips', 'Nutrition', 'Success Stories', 'Workout Guides', 'News'];
 
 export default function AdminBlogPage() {
@@ -28,9 +30,7 @@ export default function AdminBlogPage() {
   const toast = useToast();
     const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUserName, setCurrentUserName] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [form, setForm] = useState({
     title: '',
@@ -51,14 +51,8 @@ export default function AdminBlogPage() {
     try {
       const sessionRes = await fetch('/api/auth/session');
       const session = await sessionRes.json();
-      
-      if (!session.authenticated || session.user?.role !== 'admin') {
-        router.push('/login');
-        return;
-      }
-      const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
-      setIsSuperAdmin(session.user?.email?.toLowerCase() === superAdminEmail.toLowerCase());
-      
+      if (!session.authenticated) { router.push('/login'); return; }
+      if (session.user?.role !== 'super_admin') { router.push('/admin'); return; }
       await loadPosts();
     } catch {
       router.push('/login');
@@ -88,7 +82,7 @@ export default function AdminBlogPage() {
       excerpt: '',
       category: 'Fitness Tips',
       coverImage: '',
-      authorName: currentUserName, // auto-fill from session
+      authorName: '',
       tags: '',
       isPublished: false,
     });
@@ -191,14 +185,12 @@ export default function AdminBlogPage() {
               ← Back to Dashboard
             </Link>
           </div>
-          {isSuperAdmin && (
-            <button
-              onClick={openCreateModal}
-              className="px-6 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg font-semibold transition-all"
-            >
-              + New Post
-            </button>
-          )}
+          <button
+            onClick={openCreateModal}
+            className="px-6 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg font-semibold transition-all"
+          >
+            + New Post
+          </button>
         </div>
 
         {/* Stats */}
@@ -228,14 +220,12 @@ export default function AdminBlogPage() {
               <div className="text-6xl mb-4">📝</div>
               <h3 className="text-xl font-bold text-white mb-2">No Posts Yet</h3>
               <p className="text-gray-400 mb-4">Start sharing fitness tips and stories with your community!</p>
-              {isSuperAdmin && (
-                <button
-                  onClick={openCreateModal}
-                  className="px-6 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
-                >
-                  Write First Post
-                </button>
-              )}
+              <button
+                onClick={openCreateModal}
+                className="px-6 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+              >
+                Write First Post
+              </button>
             </div>
           ) : (
             <table className="w-full">
@@ -276,7 +266,7 @@ export default function AdminBlogPage() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex gap-2">
-                        {isSuperAdmin && <button
+                        <button
                           onClick={() => togglePublish(post)}
                           className={`px-2 py-1 text-xs rounded ${
                             post.isPublished 
@@ -286,14 +276,14 @@ export default function AdminBlogPage() {
                           title={post.isPublished ? 'Unpublish' : 'Publish'}
                         >
                           {post.isPublished ? '📝' : '🚀'}
-                        </button>}
-                        {isSuperAdmin && <button
+                        </button>
+                        <button
                           onClick={() => openEditModal(post)}
                           className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-xs rounded"
                           title="Edit"
                         >
                           ✏️
-                        </button>}
+                        </button>
                         {post.isPublished && (
                           <a
                             href={`/blog/${post.slug}`}
@@ -305,13 +295,13 @@ export default function AdminBlogPage() {
                             👁️
                           </a>
                         )}
-                        {isSuperAdmin && <button
+                        <button
                           onClick={() => handleDelete(post)}
                           className="px-2 py-1 bg-red-600 hover:bg-red-700 text-xs rounded"
                           title="Delete permanently"
                         >
                           🗑️
-                        </button>}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -323,7 +313,7 @@ export default function AdminBlogPage() {
       </div>
 
       {/* Modal */}
-      {showModal && isSuperAdmin && (
+      {showModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1e1e2d] rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-white mb-4">
