@@ -8,10 +8,10 @@ import { getRequestUser } from '@/server/auth/session';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: reviewId } = await params;
+    const { id: reviewId } = await context.params;
     
     // Check authentication and admin role
     const user = await getRequestUser(request);
@@ -51,10 +51,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: reviewId } = await params;
+    const { id: reviewId } = await context.params;
     
     // Check authentication and admin role
     const user = await getRequestUser(request);
