@@ -34,12 +34,6 @@ model User {
   loginCount    Int      @default(0)
   mustChangePassword Boolean @default(false)
 
-  // Progressive login lockout (DB-backed, survives restarts)
-  failedLoginCount  Int       @default(0)
-  lockedUntil       DateTime?
-  lastFailedLoginAt DateTime?
-  lockNotifiedAt    DateTime?
-
   // 2FA
   otpCode       String?
   otpExpires    DateTime?
@@ -57,7 +51,6 @@ model User {
   favoriteActivities String?  // JSON array as string: ["Gym", "Yoga", "Running"]
   experienceLevel    String?  // "Beginner", "Intermediate", "Advanced"
   fitnessGoals       String?
-  newsletterSubscribed Boolean @default(false)
 
   bookmarks     Bookmark[]
   reviews       Review[]
@@ -68,18 +61,28 @@ model User {
 }
 
 model ActivityLog {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action    String   // "login", "logout", "search", "view_location", "write_review"
-  details   String?  // JSON string with additional info (search query, location name, etc.)
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String   // "login", "logout", "search", "view_location", "write_review"
+  details     String?  // JSON string with additional info
+  ipAddress   String?
+  userAgent   String?
+  // Geo & device info
+  country     String?
+  countryCode String?
+  city        String?
+  region      String?
+  device      String?
+  browser     String?
+  os          String?
+  createdAt   DateTime @default(now())
 
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+  @@index([country])
+  @@index([ipAddress])
   @@map("activity_logs")
 }
 
@@ -363,45 +366,4 @@ model MembershipPlan {
   updatedAt   DateTime @updatedAt
 
   @@map("membership_plans")
-}
-
-model NewsletterSubscriber {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  name           String?
-  source         String    @default("footer") // "footer", "register", "admin"
-  isActive       Boolean   @default(true)
-  subscribedAt   DateTime  @default(now())
-  unsubscribedAt DateTime?
-  userId         String?
-
-  @@index([email])
-  @@index([isActive])
-  @@map("newsletter_subscribers")
-}
-
-model VisitorLog {
-  id          String   @id @default(cuid())
-  sessionId   String
-  userId      String?
-  page        String
-  referrer    String?
-  userAgent   String?
-  device      String?
-  browser     String?
-  os          String?
-  ipAddress   String?
-  country     String?
-  countryCode String?
-  region      String?
-  city        String?
-  createdAt   DateTime @default(now())
-
-  @@index([sessionId])
-  @@index([userId])
-  @@index([page])
-  @@index([createdAt])
-  @@index([country])
-  @@index([ipAddress])
-  @@map("visitor_logs")
 }
