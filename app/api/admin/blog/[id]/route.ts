@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
-const isSuperAdmin = (user: any) => user?.role === 'super_admin';
-
 
 /**
  * GET /api/admin/blog/[id]
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
-    if (!user || !isSuperAdmin(user)) {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const post = await prisma.blogPost.findUnique({ where: { id } });
 
     if (!post) {
@@ -36,38 +34,26 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
-    if (!user || !isSuperAdmin(user)) {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const body = await request.json();
 
-    // Build explicit update object — only update allowed fields
-    const { title, content, excerpt, category, coverImage, isPublished, authorName, tags } = body;
-    const updateData: any = {};
-    if (title !== undefined) updateData.title = title;
-    if (content !== undefined) updateData.content = content;
-    if (excerpt !== undefined) updateData.excerpt = excerpt || null;
-    if (category !== undefined) updateData.category = category;
-    if (coverImage !== undefined) updateData.coverImage = coverImage || null;
-    if (tags !== undefined) updateData.tags = tags || null;
-    // Always use provided authorName — never fall back to session user name
-    if (authorName !== undefined) updateData.authorName = authorName.trim() || 'Find My Fitness';
-    if (isPublished !== undefined) {
-      updateData.isPublished = isPublished;
-      const existingPost = await prisma.blogPost.findUnique({ where: { id }, select: { publishedAt: true } });
-      if (isPublished && !existingPost?.publishedAt) updateData.publishedAt = new Date();
-      if (!isPublished) updateData.publishedAt = null;
+    // If publishing for the first time, set publishedAt
+    const existingPost = await prisma.blogPost.findUnique({ where: { id } });
+    if (body.isPublished && existingPost && !existingPost.publishedAt) {
+      body.publishedAt = new Date();
     }
 
     const post = await prisma.blogPost.update({
       where: { id },
-      data: updateData,
+      data: body,
     });
 
     return NextResponse.json({ success: true, post });
@@ -82,15 +68,15 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
-    if (!user || !isSuperAdmin(user)) {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     await prisma.blogPost.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
