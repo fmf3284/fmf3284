@@ -170,25 +170,23 @@ export default function AdminBlogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#13131a] text-white p-6 pt-10">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
-              ✍️ Blog Management
-            </h1>
-            <Link href="/admin" className="text-violet-500 hover:underline text-sm">
-              ← Back to Dashboard
-            </Link>
-          </div>
-          <button
-            onClick={openCreateModal}
-            className="px-6 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg font-semibold transition-all"
-          >
-            + New Post
-          </button>
+    <div className="min-h-screen bg-[#13131a] text-white">
+      {/* Sticky header — always visible below AdminBar */}
+      <div className="sticky top-0 z-20 bg-[#13131a] border-b border-violet-900/30 px-6 py-3 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link href="/admin" className="text-violet-500 hover:text-violet-300 text-sm transition-colors">← Admin</Link>
+          <h1 className="text-xl font-bold text-white">✍️ Blog Management</h1>
         </div>
+        <button
+          onClick={openCreateModal}
+          className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-lg font-bold transition-all text-sm flex items-center gap-2"
+        >
+          <span className="text-lg leading-none">+</span> New Post
+        </button>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-6">
+        {/* removed old header */}
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
@@ -212,17 +210,21 @@ export default function AdminBlogPage() {
 
         {/* Posts Table */}
         <div className="bg-[#1e1e2d] rounded-xl overflow-hidden border border-violet-900/30">
+          {/* Quick add button row */}
+          <div className="p-3 border-b border-gray-800">
+            <button
+              onClick={openCreateModal}
+              className="flex items-center gap-2 px-4 py-2 bg-violet-600/20 hover:bg-violet-600 border border-violet-600/40 hover:border-violet-500 rounded-lg text-violet-400 hover:text-white transition-all text-sm font-semibold"
+            >
+              <span className="text-xl leading-none font-bold">+</span> Add New Post
+            </button>
+          </div>
+
           {posts.length === 0 ? (
             <div className="p-12 text-center">
               <div className="text-6xl mb-4">📝</div>
               <h3 className="text-xl font-bold text-white mb-2">No Posts Yet</h3>
               <p className="text-gray-400 mb-4">Start sharing fitness tips and stories with your community!</p>
-              <button
-                onClick={openCreateModal}
-                className="px-6 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
-              >
-                Write First Post
-              </button>
             </div>
           ) : (
             <table className="w-full">
