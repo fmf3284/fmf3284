@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || '';
-const isSuperAdmin = (email?: string) => email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-
 
 /**
  * GET /api/admin/blog/[id]
@@ -44,22 +41,31 @@ export async function PATCH(
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (!isSuperAdmin(user.email)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
 
     const { id } = await params;
     const body = await request.json();
 
-    // If publishing for the first time, set publishedAt
-    const existingPost = await prisma.blogPost.findUnique({ where: { id } });
-    if (body.isPublished && existingPost && !existingPost.publishedAt) {
-      body.publishedAt = new Date();
+    // Build explicit update object — only update allowed fields
+    const { title, content, excerpt, category, coverImage, isPublished, authorName, tags } = body;
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (content !== undefined) updateData.content = content;
+    if (excerpt !== undefined) updateData.excerpt = excerpt || null;
+    if (category !== undefined) updateData.category = category;
+    if (coverImage !== undefined) updateData.coverImage = coverImage || null;
+    if (tags !== undefined) updateData.tags = tags || null;
+    // Always use provided authorName — never fall back to session user name
+    if (authorName !== undefined) updateData.authorName = authorName.trim() || 'Find My Fitness';
+    if (isPublished !== undefined) {
+      updateData.isPublished = isPublished;
+      const existingPost = await prisma.blogPost.findUnique({ where: { id }, select: { publishedAt: true } });
+      if (isPublished && !existingPost?.publishedAt) updateData.publishedAt = new Date();
+      if (!isPublished) updateData.publishedAt = null;
     }
 
     const post = await prisma.blogPost.update({
       where: { id },
-      data: body,
+      data: updateData,
     });
 
     return NextResponse.json({ success: true, post });
@@ -80,9 +86,6 @@ export async function DELETE(
     const user = await getRequestUser(request);
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if (!isSuperAdmin(user.email)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const { id } = await params;
