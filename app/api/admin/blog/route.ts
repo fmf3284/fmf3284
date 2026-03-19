@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
+const isSuperAdmin = (user: any) => user?.role === 'super_admin';
+
 
 /**
  * GET /api/admin/blog
@@ -9,8 +11,8 @@ import { getRequestUser } from '@/server/auth/session';
 export async function GET(request: NextRequest) {
   try {
     const user = await getRequestUser(request);
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user || !isSuperAdmin(user)) {
+      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
     }
 
     const posts = await prisma.blogPost.findMany({
@@ -31,8 +33,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getRequestUser(request);
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user || !isSuperAdmin(user)) {
+      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
     }
 
     const body = await request.json();
