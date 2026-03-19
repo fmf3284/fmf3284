@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
 
-export const dynamic = 'force-dynamic';
-
 // Parse device/browser/OS from user agent
 function parseUserAgent(ua: string) {
   const device = /mobile/i.test(ua) ? 'mobile' : /tablet|ipad/i.test(ua) ? 'tablet' : 'desktop';
