@@ -131,12 +131,55 @@ export default function RichEditor({ value, onChange, placeholder = 'Write your 
     exec('insertHTML', '<hr style="border:none;border-top:1px solid rgba(139,92,246,0.4);margin:16px 0;"><p><br></p>');
   };
 
-  const autoFormat = async () => {
+  const [showAiMenu, setShowAiMenu] = useState(false);
+  const [aiMode, setAiMode] = useState('');
+
+  const AI_MODES = [
+    { id: 'format',    icon: '✨', label: 'Format & Structure',  desc: 'Clean headings, paragraphs, lists' },
+    { id: 'improve',   icon: '🚀', label: 'Improve Writing',     desc: 'Better flow, clarity, engagement' },
+    { id: 'shorten',   icon: '✂️', label: 'Make Concise',        desc: 'Remove fluff, tighten sentences' },
+    { id: 'expand',    icon: '📝', label: 'Expand Content',      desc: 'Add depth, examples, detail' },
+    { id: 'seo',       icon: '🔍', label: 'SEO Optimize',        desc: 'Better keywords and readability' },
+    { id: 'tone_pro',  icon: '👔', label: 'Professional Tone',   desc: 'More authoritative and polished' },
+    { id: 'tone_fun',  icon: '😊', label: 'Friendly Tone',       desc: 'More conversational and relatable' },
+    { id: 'fitness',   icon: '💪', label: 'Fitness Expert',      desc: 'Add fitness expertise & tips' },
+  ];
+
+  const PROMPTS: Record<string, string> = {
+    format: `You are a professional blog editor. Reformat this blog content into clean, well-structured HTML.
+Rules: Use <h2> for sections, <h3> for sub-sections, <p> for paragraphs, <ul><li> for bullets, <ol><li> for steps, <strong> for key terms, <blockquote> for key takeaways. Add intro and conclusion if missing. Keep ALL original information. Return ONLY HTML, no markdown, no code fences.`,
+
+    improve: `You are an expert content writer. Improve this blog post to be more engaging, clear, and compelling.
+Rules: Fix awkward sentences, improve flow between paragraphs, make the opening hook stronger, strengthen the conclusion, use active voice, vary sentence length. Keep all facts. Use proper HTML tags (<h2>, <h3>, <p>, <ul>, <strong>, <blockquote>). Return ONLY HTML.`,
+
+    shorten: `You are a content editor. Make this blog post more concise and punchy without losing key information.
+Rules: Cut filler words and redundant sentences, combine short choppy sentences, remove repetition, keep all key facts and examples. Use proper HTML tags. Return ONLY HTML, no markdown.`,
+
+    expand: `You are a fitness and wellness content expert. Expand this blog post with more depth and value.
+Rules: Add relevant examples, statistics, or practical tips, expand thin sections, add a FAQ section if appropriate, add actionable takeaways. Use proper HTML tags (<h2>, <h3>, <p>, <ul>, <blockquote>). Keep all original content. Return ONLY HTML.`,
+
+    seo: `You are an SEO content specialist. Optimize this blog post for search engines and readability.
+Rules: Add keyword-rich headings, improve meta-level structure, add transition phrases, ensure good header hierarchy (H2 > H3), break up long paragraphs, add a clear conclusion with call to action. Use proper HTML tags. Return ONLY HTML.`,
+
+    tone_pro: `You are a professional editor. Rewrite this blog post in a more authoritative, professional tone.
+Rules: Use confident language, add expert credibility, remove casual phrases, use precise vocabulary, maintain warmth but add authority. Keep all facts. Use proper HTML tags. Return ONLY HTML.`,
+
+    tone_fun: `You are a friendly content writer. Rewrite this blog post in a conversational, relatable tone.
+Rules: Use "you" to address the reader, add relatable analogies, use contractions, make it feel like advice from a friend, keep it engaging and warm. Keep all facts. Use proper HTML tags. Return ONLY HTML.`,
+
+    fitness: `You are a certified fitness expert and content writer. Enhance this blog post with fitness expertise.
+Rules: Add evidence-based fitness tips, mention relevant muscle groups or body systems where appropriate, add practical workout or nutrition advice, cite general research findings, add motivational elements. Keep all original content. Use proper HTML tags. Return ONLY HTML.`,
+  };
+
+  const runAI = async (mode: string) => {
     if (!editorRef.current) return;
     const rawText = editorRef.current.innerText.trim();
     if (!rawText) return;
 
+    setAiMode(mode);
     setFormatting(true);
+    setShowAiMenu(false);
+
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -146,35 +189,25 @@ export default function RichEditor({ value, onChange, placeholder = 'Write your 
           max_tokens: 4000,
           messages: [{
             role: 'user',
-            content: `You are a professional blog editor. Take the following raw blog content and reformat it into a clean, professional, well-structured HTML blog post.
-
-Rules:
-- Use <h2> for main section headings, <h3> for sub-headings
-- Use <p> for paragraphs with proper spacing
-- Use <ul><li> for bullet points, <ol><li> for numbered steps
-- Use <strong> for key terms and important points
-- Use <blockquote> for quotes or key takeaways
-- Add a clear intro paragraph if missing
-- Add a conclusion paragraph if missing
-- Keep all the original information — do NOT add new facts
-- Return ONLY the HTML content, no markdown, no code blocks, no explanation
-
-Raw content:
-${rawText}`,
+            content: PROMPTS[mode] + '\n\nContent:\n' + rawText,
           }],
         }),
       });
 
       const data = await res.json();
-      const html = data.content?.[0]?.text || '';
+      let html = data.content?.[0]?.text || '';
+      // Strip any accidental markdown code fences
+      html = html.replace(/^```html\n?/i, '').replace(/^```\n?/i, '').replace(/\n?```$/i, '').trim();
+
       if (html && editorRef.current) {
         editorRef.current.innerHTML = html;
         onChange(html);
       }
     } catch (err) {
-      console.error('Auto-format failed:', err);
+      console.error('AI format failed:', err);
     } finally {
       setFormatting(false);
+      setAiMode('');
     }
   };
 
@@ -395,30 +428,55 @@ ${rawText}`,
 
         {divider}
 
-        {/* AI Auto-Format */}
-        <button
-          type="button"
-          onClick={autoFormat}
-          disabled={formatting}
-          title="Auto-format the entire post using AI — makes it clean and professional"
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-semibold transition-all disabled:opacity-60 ${
-            formatting
-              ? 'bg-violet-800 text-violet-300'
-              : 'bg-violet-600 hover:bg-violet-500 text-white'
-          }`}
-        >
-          {formatting ? (
+        {/* AI Writing Assistant */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => { saveSelection(); setShowAiMenu(!showAiMenu); }}
+            disabled={formatting}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-bold transition-all disabled:opacity-60 ${
+              formatting ? 'bg-violet-800 text-violet-300' : 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white'
+            }`}
+          >
+            {formatting ? (
+              <>
+                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                {AI_MODES.find(m => m.id === aiMode)?.label || 'Processing...'}
+              </>
+            ) : (
+              <>✨ AI Writer ▾</>
+            )}
+          </button>
+
+          {showAiMenu && !formatting && (
             <>
-              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              Formatting...
+              {/* Backdrop */}
+              <div className="fixed inset-0 z-40" onClick={() => setShowAiMenu(false)} />
+              {/* Menu */}
+              <div className="absolute top-full right-0 z-50 mt-1 rounded-xl overflow-hidden w-64"
+                style={{ background: '#1a1a2e', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+                <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">AI Writing Assistant</p>
+                </div>
+                {AI_MODES.map(mode => (
+                  <button key={mode.id} type="button"
+                    onClick={() => runAI(mode.id)}
+                    className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-violet-600/20 transition-all text-left"
+                  >
+                    <span className="text-lg flex-shrink-0 mt-0.5">{mode.icon}</span>
+                    <div>
+                      <p className="text-white text-sm font-medium">{mode.label}</p>
+                      <p className="text-gray-500 text-xs">{mode.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </>
-          ) : (
-            <>✨ Auto-Format</>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Editor area */}
