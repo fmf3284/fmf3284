@@ -7,7 +7,7 @@ import { getRequestUser } from '@/server/auth/session';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const post = await prisma.blogPost.findUnique({ where: { id } });
 
     if (!post) {
@@ -34,7 +34,7 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
@@ -42,18 +42,29 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const body = await request.json();
+    const { title, content, excerpt, category, coverImage, isPublished, authorName, tags } = body;
 
-    // If publishing for the first time, set publishedAt
-    const existingPost = await prisma.blogPost.findUnique({ where: { id } });
-    if (body.isPublished && existingPost && !existingPost.publishedAt) {
-      body.publishedAt = new Date();
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (content !== undefined) updateData.content = content;
+    if (excerpt !== undefined) updateData.excerpt = excerpt || null;
+    if (category !== undefined) updateData.category = category;
+    if (coverImage !== undefined) updateData.coverImage = coverImage || null;
+    if (tags !== undefined) updateData.tags = tags || null;
+    // Always use the provided authorName from the form
+    if (authorName !== undefined) updateData.authorName = authorName.trim() || 'Find My Fitness';
+    if (isPublished !== undefined) {
+      updateData.isPublished = isPublished;
+      const existingPost = await prisma.blogPost.findUnique({ where: { id }, select: { publishedAt: true } });
+      if (isPublished && !existingPost?.publishedAt) updateData.publishedAt = new Date();
+      if (!isPublished) updateData.publishedAt = null;
     }
 
     const post = await prisma.blogPost.update({
       where: { id },
-      data: body,
+      data: updateData,
     });
 
     return NextResponse.json({ success: true, post });
@@ -68,7 +79,7 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getRequestUser(request);
@@ -76,7 +87,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     await prisma.blogPost.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
