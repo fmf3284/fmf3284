@@ -47,7 +47,6 @@ export async function GET(request: NextRequest) {
         role: true,
         status: true,
         mustChangePassword: true,
-        newsletterSubscribed: true,
       },
     });
 
@@ -102,7 +101,6 @@ export async function GET(request: NextRequest) {
           name: user.name,
           role: user.role,
           mustChangePassword: user.mustChangePassword || false,
-          newsletterSubscribed: user.newsletterSubscribed || false,
         },
         session: {
           expiresAt: new Date(sessionData.expiresAt).toISOString(),
