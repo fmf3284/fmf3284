@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'moh.alneama@yahoo.com';
+const isSuperAdmin = (email?: string) => email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+
 
 /**
  * GET /api/admin/blog
@@ -33,6 +36,9 @@ export async function POST(request: NextRequest) {
     const user = await getRequestUser(request);
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!isSuperAdmin(user.email)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const body = await request.json();
