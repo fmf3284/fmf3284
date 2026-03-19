@@ -8,10 +8,10 @@ import { getRequestUser } from '@/server/auth/session';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: userId } = await params;
+    const { id: userId } = await context.params;
     
     const currentUser = await getRequestUser(request);
     if (!currentUser || currentUser.role !== 'admin') {
@@ -94,10 +94,10 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: userId } = await params;
+    const { id: userId } = await context.params;
     
     const currentUser = await getRequestUser(request);
     if (!currentUser || currentUser.role !== 'admin') {
