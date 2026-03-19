@@ -94,7 +94,7 @@ export default function AdminProfileView() {
       const sessionRes = await fetch('/api/auth/session');
       const session = await sessionRes.json();
       
-      if (!session.authenticated || session.user?.role !== 'admin') {
+      if (!session.authenticated || session.user?.role !== 'admin' && session.user?.role !== 'super_admin') {
         router.push('/admin');
         return;
       }
