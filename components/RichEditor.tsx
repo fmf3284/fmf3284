@@ -503,7 +503,7 @@ Rules: Add evidence-based fitness tips, mention relevant muscle groups or body s
               {/* Backdrop */}
               <div className="fixed inset-0 z-40" onClick={() => setShowAiMenu(false)} />
               {/* Menu */}
-              <div className="absolute top-full right-0 z-50 mt-1 rounded-xl overflow-hidden w-64"
+              <div className="absolute top-full left-0 z-50 mt-1 rounded-xl overflow-hidden w-72"
                 style={{ background: '#1a1a2e', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
                 <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
                   <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">AI Writing Assistant</p>
