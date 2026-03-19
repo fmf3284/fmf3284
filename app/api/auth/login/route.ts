@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
+import { logActivity } from '@/server/utils/activityLogger';
 import { rateLimit, rateLimitPresets } from '@/server/middleware/rateLimit';
 import { EmailService } from '@/server/services/email.service';
 import crypto from 'crypto';
@@ -7,11 +8,13 @@ import {
   verifyPassword,
   createSessionToken,
   getSessionDurationSeconds,
+  checkLoginAttempt,
+  recordFailedLogin,
+  clearLoginAttempts,
   sanitizeEmail,
   isValidEmail,
   securityHeaders,
 } from '@/server/utils/security';
-import { checkDbLockout, recordDbFailedLogin, clearDbLockout } from '@/server/utils/lockout';
 
 const loginRateLimiter = rateLimit(rateLimitPresets.auth);
 
@@ -48,16 +51,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check DB-backed progressive lockout
-    const lockoutCheck = await checkDbLockout(sanitizedEmail);
-
-    if (!lockoutCheck.allowed) {
-      console.warn(`Login locked: ${sanitizedEmail} from ${ipAddress} (permanent: ${lockoutCheck.isPermanent})`);
+    // Check brute force protection (by IP + email combination)
+    const bruteForceKey = `${ipAddress.split(',')[0].trim()}_${sanitizedEmail}`;
+    const attemptCheck = checkLoginAttempt(bruteForceKey);
+    
+    if (!attemptCheck.allowed) {
+      console.warn(`Login locked out: ${sanitizedEmail} from ${ipAddress}`);
+      const lockedUser = await prisma.user.findUnique({ where: { email: sanitizedEmail }, select: { id: true } }).catch(() => null);
+      if (lockedUser) await logActivity({ userId: lockedUser.id, action: 'login_locked', details: { email: sanitizedEmail }, ipAddress, userAgent });
+      
       return NextResponse.json(
-        {
-          error: lockoutCheck.message,
-          lockedUntil: lockoutCheck.lockedUntil?.toISOString(),
-          isPermanent: lockoutCheck.isPermanent,
+        { 
+          error: attemptCheck.message,
+          lockedUntil: attemptCheck.lockedUntil?.toISOString(),
         },
         { status: 429, headers: securityHeaders }
       );
@@ -82,9 +88,12 @@ export async function POST(request: NextRequest) {
     const invalidCredentialsError = 'Invalid email or password';
 
     if (!user) {
-      // Still record attempt (won't find user but maintains timing consistency)
+      const failedAttempt = recordFailedLogin(bruteForceKey);
       return NextResponse.json(
-        { error: invalidCredentialsError },
+        { 
+          error: invalidCredentialsError,
+          remainingAttempts: failedAttempt.remainingAttempts,
+        },
         { status: 401, headers: securityHeaders }
       );
     }
@@ -117,31 +126,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (!passwordValid) {
-      // Record failed attempt in DB — progressive lockout
-      const failResult = await recordDbFailedLogin(sanitizedEmail, ipAddress, user.name || undefined);
-
-      if (!failResult.allowed) {
-        return NextResponse.json(
-          {
-            error: failResult.message,
-            lockedUntil: failResult.lockedUntil?.toISOString(),
-            isPermanent: failResult.isPermanent,
-          },
-          { status: 429, headers: securityHeaders }
-        );
+      const failedAttempt = recordFailedLogin(bruteForceKey);
+      
+      // Log failed attempt
+      try {
+        await logActivity({ userId: user.id, action: 'login_failed', details: { reason: 'invalid_password', attempts: failedAttempt.count }, ipAddress, userAgent });
+      } catch (e) {
+        console.error('Failed to log failed login:', e);
       }
-
+      
       return NextResponse.json(
-        {
+        { 
           error: invalidCredentialsError,
-          remainingAttempts: failResult.remainingAttempts,
+          remainingAttempts: failedAttempt.remainingAttempts,
         },
         { status: 401, headers: securityHeaders }
       );
     }
 
-    // Clear DB lockout on successful login
-    await clearDbLockout(sanitizedEmail);
+    // Clear failed login attempts on success
+    clearLoginAttempts(bruteForceKey);
 
     // Password correct — send 2FA OTP before creating session
     const otp = String(crypto.randomInt(100000, 999999));
