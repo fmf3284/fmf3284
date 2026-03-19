@@ -36,22 +36,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content, excerpt, category, coverImage, isPublished } = body;
+    const { title, content, excerpt, category, coverImage, isPublished, authorName, tags } = body;
 
     if (!title || !content) {
       return NextResponse.json({ error: 'Title and content are required' }, { status: 400 });
     }
 
-    // Generate unique slug — check DB to avoid conflicts
+    // Generate unique slug
     const baseSlug = title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
-
     let slug = baseSlug + '-' + Date.now().toString(36);
-    // Ensure uniqueness
-    const existing = await prisma.blogPost.findFirst({ where: { slug } });
-    if (existing) {
+    const slugExists = await prisma.blogPost.findFirst({ where: { slug } });
+    if (slugExists) {
       slug = baseSlug + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
     }
 
@@ -60,11 +58,12 @@ export async function POST(request: NextRequest) {
         title,
         slug,
         content,
-        excerpt: excerpt || content.substring(0, 200) + '...',
+        excerpt: excerpt || null,
         category,
-        coverImage,
+        coverImage: coverImage || null,
+        tags: tags || null,
         authorId: user.id,
-        authorName: user.name || 'Admin',
+        authorName: authorName?.trim() || 'Find My Fitness',
         isPublished: isPublished || false,
         publishedAt: isPublished ? new Date() : null,
       },
