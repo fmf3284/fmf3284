@@ -13,6 +13,8 @@ interface BlogPost {
   content: string;
   category: string | null;
   coverImage: string | null;
+  authorName: string | null;
+  tags: string | null;
   isPublished: boolean;
   publishedAt: string | null;
   viewCount: number;
@@ -27,6 +29,7 @@ export default function AdminBlogPage() {
     const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [form, setForm] = useState({
     title: '',
@@ -34,6 +37,8 @@ export default function AdminBlogPage() {
     excerpt: '',
     category: 'Fitness Tips',
     coverImage: '',
+    authorName: '',
+    tags: '',
     isPublished: false,
   });
 
@@ -50,6 +55,8 @@ export default function AdminBlogPage() {
         router.push('/login');
         return;
       }
+      const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'moh.alneama@yahoo.com';
+      setIsSuperAdmin(session.user?.email?.toLowerCase() === superAdminEmail.toLowerCase());
       
       await loadPosts();
     } catch {
@@ -80,6 +87,8 @@ export default function AdminBlogPage() {
       excerpt: '',
       category: 'Fitness Tips',
       coverImage: '',
+      authorName: '',
+      tags: '',
       isPublished: false,
     });
     setShowModal(true);
@@ -93,6 +102,8 @@ export default function AdminBlogPage() {
       excerpt: post.excerpt || '',
       category: post.category || 'Fitness Tips',
       coverImage: post.coverImage || '',
+      authorName: post.authorName || '',
+      tags: post.tags || '',
       isPublished: post.isPublished,
     });
     setShowModal(true);
@@ -179,12 +190,14 @@ export default function AdminBlogPage() {
               ← Back to Dashboard
             </Link>
           </div>
-          <button
-            onClick={openCreateModal}
-            className="px-6 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg font-semibold transition-all"
-          >
-            + New Post
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={openCreateModal}
+              className="px-6 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg font-semibold transition-all"
+            >
+              + New Post
+            </button>
+          )}
         </div>
 
         {/* Stats */}
@@ -214,12 +227,14 @@ export default function AdminBlogPage() {
               <div className="text-6xl mb-4">📝</div>
               <h3 className="text-xl font-bold text-white mb-2">No Posts Yet</h3>
               <p className="text-gray-400 mb-4">Start sharing fitness tips and stories with your community!</p>
-              <button
-                onClick={openCreateModal}
-                className="px-6 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
-              >
-                Write First Post
-              </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={openCreateModal}
+                  className="px-6 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+                >
+                  Write First Post
+                </button>
+              )}
             </div>
           ) : (
             <table className="w-full">
@@ -260,7 +275,7 @@ export default function AdminBlogPage() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex gap-2">
-                        <button
+                        {isSuperAdmin && <button
                           onClick={() => togglePublish(post)}
                           className={`px-2 py-1 text-xs rounded ${
                             post.isPublished 
@@ -270,19 +285,32 @@ export default function AdminBlogPage() {
                           title={post.isPublished ? 'Unpublish' : 'Publish'}
                         >
                           {post.isPublished ? '📝' : '🚀'}
-                        </button>
-                        <button
+                        </button>}
+                        {isSuperAdmin && <button
                           onClick={() => openEditModal(post)}
                           className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-xs rounded"
+                          title="Edit"
                         >
                           ✏️
-                        </button>
-                        <button
+                        </button>}
+                        {post.isPublished && (
+                          <a
+                            href={`/blog/${post.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-xs rounded inline-block"
+                            title="View live"
+                          >
+                            👁️
+                          </a>
+                        )}
+                        {isSuperAdmin && <button
                           onClick={() => handleDelete(post)}
                           className="px-2 py-1 bg-red-600 hover:bg-red-700 text-xs rounded"
+                          title="Delete permanently"
                         >
                           🗑️
-                        </button>
+                        </button>}
                       </div>
                     </td>
                   </tr>
@@ -294,9 +322,9 @@ export default function AdminBlogPage() {
       </div>
 
       {/* Modal */}
-      {showModal && (
+      {showModal && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1e1e2d] rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1e1e2d] rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-white mb-4">
               {editingPost ? 'Edit Post' : 'Create New Post'}
             </h2>
@@ -330,7 +358,7 @@ export default function AdminBlogPage() {
                   value={form.content}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white font-mono text-sm"
-                  rows={12}
+                  rows={18}
                   placeholder="Write your post content here... (Markdown supported)"
                 />
               </div>
@@ -355,7 +383,30 @@ export default function AdminBlogPage() {
                     value={form.coverImage}
                     onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                    placeholder="https://example.com/image.jpg"
+                    placeholder="https://unsplash.com/..."
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Author Name</label>
+                  <input
+                    type="text"
+                    value={form.authorName}
+                    onChange={(e) => setForm({ ...form, authorName: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    placeholder="e.g. Mo Alneama"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Tags <span className="text-gray-500 font-normal">(comma separated)</span></label>
+                  <input
+                    type="text"
+                    value={form.tags}
+                    onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    placeholder="fitness, nutrition, tips"
                   />
                 </div>
               </div>
