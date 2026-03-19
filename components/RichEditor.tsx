@@ -475,55 +475,58 @@ Rules: Add evidence-based fitness tips, mention relevant muscle groups or body s
 
         {divider}
 
-        {/* AI Writing Assistant */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => { saveSelection(); setShowAiMenu(!showAiMenu); }}
-            disabled={formatting}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-bold transition-all disabled:opacity-60 ${
-              formatting ? 'bg-violet-800 text-violet-300' : 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white'
-            }`}
-          >
-            {formatting ? (
-              <>
-                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                {AI_MODES.find(m => m.id === aiMode)?.label || 'Processing...'}
-              </>
-            ) : (
-              <>✨ AI Writer ▾</>
-            )}
-          </button>
+      </div>
 
-          {showAiMenu && !formatting && (
+      {/* AI Writer — full width row below toolbar */}
+      <div className="relative px-2 py-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.15)', background: 'rgba(139,92,246,0.04)' }}>
+        <button
+          type="button"
+          onClick={() => { saveSelection(); setShowAiMenu(!showAiMenu); }}
+          disabled={formatting}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-60 ${
+            formatting ? 'bg-violet-800 text-violet-300' : 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white'
+          }`}
+        >
+          {formatting ? (
             <>
-              {/* Backdrop */}
-              <div className="fixed inset-0 z-40" onClick={() => setShowAiMenu(false)} />
-              {/* Menu */}
-              <div className="absolute top-full left-0 z-50 mt-1 rounded-xl overflow-hidden w-72"
-                style={{ background: '#1a1a2e', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
-                <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">AI Writing Assistant</p>
-                </div>
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              {AI_MODES.find(m => m.id === aiMode)?.label || 'Processing...'}
+            </>
+          ) : (
+            <>✨ AI Writer ▾</>
+          )}
+        </button>
+
+        {showAiMenu && !formatting && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowAiMenu(false)} />
+            {/* Grid menu — opens downward with full width */}
+            <div className="absolute left-0 right-0 z-50 mt-1 rounded-xl overflow-hidden mx-2"
+              style={{ background: '#1a1a2e', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 20px 40px rgba(0,0,0,0.6)', top: '100%' }}>
+              <div className="px-4 py-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">✨ AI Writing Assistant — pick a mode</p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-0">
                 {AI_MODES.map(mode => (
                   <button key={mode.id} type="button"
                     onClick={() => runAI(mode.id)}
-                    className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-violet-600/20 transition-all text-left"
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-violet-600/20 transition-all text-left border-b border-r"
+                    style={{ borderColor: 'rgba(139,92,246,0.1)' }}
                   >
-                    <span className="text-lg flex-shrink-0 mt-0.5">{mode.icon}</span>
+                    <span className="text-xl flex-shrink-0">{mode.icon}</span>
                     <div>
-                      <p className="text-white text-sm font-medium">{mode.label}</p>
-                      <p className="text-gray-500 text-xs">{mode.desc}</p>
+                      <p className="text-white text-sm font-semibold leading-tight">{mode.label}</p>
+                      <p className="text-gray-500 text-xs mt-0.5 leading-tight">{mode.desc}</p>
                     </div>
                   </button>
                 ))}
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Editor area */}
