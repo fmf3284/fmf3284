@@ -7,9 +7,9 @@ import { getRequestUser } from '@/server/auth/session';
  * GET /api/reviews/[id]
  * Get a single review by ID
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const review = await ReviewsService.getReviewById(id);
 
     if (!review) {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * Update a review (requires authentication and ownership)
  * Automatically updates location rating aggregates
  */
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     // Check authentication
     const user = await getRequestUser(request);
@@ -54,7 +54,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const body = await request.json();
 
     // Validate with Zod schema
@@ -117,7 +117,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
  * Delete a review (requires authentication and ownership)
  * Automatically updates location rating aggregates
  */
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     // Check authentication
     const user = await getRequestUser(request);
@@ -128,7 +128,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       );
     }
 
-    const { id } = await params;
+    const { id } = await context.params;
 
     // Delete review and recalculate location aggregates
     await ReviewsService.deleteReview(user.id, id);
