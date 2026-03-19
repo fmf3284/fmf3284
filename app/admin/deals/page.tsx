@@ -52,7 +52,7 @@ export default function AdminDealsPage() {
       const sessionRes = await fetch('/api/auth/session');
       const session = await sessionRes.json();
       if (!session.authenticated) { router.push('/login'); return; }
-      if (session.user?.role !== 'super_admin') { router.push('/admin'); return; }
+      if (session.user?.role !== 'super_admin' && session.user?.role !== 'admin') { router.push('/admin'); return; }
       await loadDeals();
     } catch {
       router.push('/login');
