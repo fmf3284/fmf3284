@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getRequestUser(request);
     
-    if (!user || user.role !== 'admin') {
+    if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getRequestUser(request);
     
-    if (!user || user.role !== 'admin') {
+    if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
