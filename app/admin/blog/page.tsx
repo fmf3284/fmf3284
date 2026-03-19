@@ -396,7 +396,7 @@ export default function AdminBlogPage() {
                     value={form.authorName}
                     onChange={(e) => setForm({ ...form, authorName: e.target.value })}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                    placeholder="e.g. Mo Alneama"
+                    placeholder="e.g. Find My Fitness Team"
                   />
                 </div>
                 <div>
