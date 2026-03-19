@@ -55,7 +55,7 @@ export default function AdminDealsPage() {
         router.push('/login');
         return;
       }
-      const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'moh.alneama@yahoo.com';
+      const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
       setIsSuperAdmin(session.user?.email?.toLowerCase() === superAdminEmail.toLowerCase());
       
       await loadDeals();
