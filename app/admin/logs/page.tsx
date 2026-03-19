@@ -68,7 +68,7 @@ export default function AdminLogs() {
         return;
       }
       
-      if (session.user?.role !== 'admin') {
+      if (session.user?.role !== 'admin' && session.user?.role !== 'super_admin') {
         setError('Access denied. Admin privileges required.');
         setLoading(false);
         return;
