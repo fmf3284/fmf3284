@@ -35,23 +35,32 @@ async function getGeoLocation(ip: string) {
   if (!ip || ip === '0.0.0.0' || ip.startsWith('127.') || ip.startsWith('::1')) {
     return { country: 'Local', countryCode: 'LO', region: null, city: 'Localhost' };
   }
+  // Try ipapi.co first
   try {
     const res = await fetch(`https://ipapi.co/${ip}/json/`, {
       headers: { 'User-Agent': 'FindMyFitness/1.0' },
-      signal: AbortSignal.timeout(2000), // 2 second timeout
+      signal: AbortSignal.timeout(2000),
     });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.error) return null;
-    return {
-      country: data.country_name || null,
-      countryCode: data.country_code || null,
-      region: data.region || null,
-      city: data.city || null,
-    };
-  } catch {
-    return null;
-  }
+    if (res.ok) {
+      const data = await res.json();
+      if (!data.error && data.country_name) {
+        return { country: data.country_name, countryCode: data.country_code || null, region: data.region || null, city: data.city || null };
+      }
+    }
+  } catch {}
+  // Fallback: ip-api.com
+  try {
+    const res2 = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (res2.ok) {
+      const data2 = await res2.json();
+      if (data2.status === 'success') {
+        return { country: data2.country || null, countryCode: data2.countryCode || null, region: data2.regionName || null, city: data2.city || null };
+      }
+    }
+  } catch {}
+  return null;
 }
 
 /**
