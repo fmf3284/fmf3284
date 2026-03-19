@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma';
 import { getRequestUser } from '@/server/auth/session';
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || '';
-const isSuperAdmin = (email?: string) => email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-
 
 /**
  * GET /api/admin/blog
@@ -37,12 +34,9 @@ export async function POST(request: NextRequest) {
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (!isSuperAdmin(user.email)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
 
     const body = await request.json();
-    const { title, content, excerpt, category, coverImage, isPublished } = body;
+    const { title, content, excerpt, category, coverImage, isPublished, authorName, tags } = body;
 
     if (!title || !content) {
       return NextResponse.json({ error: 'Title and content are required' }, { status: 400 });
@@ -63,7 +57,8 @@ export async function POST(request: NextRequest) {
         category,
         coverImage,
         authorId: user.id,
-        authorName: user.name || 'Admin',
+        authorName: authorName || user.name || 'Find My Fitness',
+        tags: tags || null,
         isPublished: isPublished || false,
         publishedAt: isPublished ? new Date() : null,
       },
