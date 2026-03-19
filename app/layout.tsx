@@ -3,8 +3,8 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AdminBar from "@/components/AdminBar";
-import PageTracker from "@/components/PageTracker";
 import { ToastProvider } from "@/components/Toast";
+import PageTracker from "@/components/PageTracker";
 
 export const metadata: Metadata = {
   title: "Find My Fitness - Find Your Fitness Anywhere",
