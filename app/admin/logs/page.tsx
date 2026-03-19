@@ -82,9 +82,9 @@ export default function AdminLogsPage() {
   const totalDevices = stats?.deviceBreakdown.reduce((s, d) => s + d._count.device, 0) || 1;
 
   return (
-    <div className="min-h-screen bg-[#13131a] text-white">
+    <div className="min-h-screen bg-[#13131a] text-white pt-2">
       {/* Sticky header */}
-      <div className="sticky top-0 z-20 bg-[#13131a] border-b border-violet-900/30 px-6 py-3 flex justify-between items-center">
+      <div className="sticky top-0 z-20 bg-[#13131a] border-b border-violet-900/30 px-6 py-3 flex justify-between items-center" style={{top: "112px"}}>
         <div className="flex items-center gap-4">
           <Link href="/admin" className="text-violet-500 hover:text-violet-300 text-sm">← Admin</Link>
           <h1 className="text-xl font-bold">📊 Visitor Logs</h1>
@@ -207,7 +207,7 @@ export default function AdminLogsPage() {
               <thead className="bg-[#2a2a3d]">
                 <tr>
                   {['Time', 'Page', 'Location', 'IP', 'Device', 'Browser', 'User'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}{h === 'Location' ? ' (City/Country)' : ''}</th>
                   ))}
                 </tr>
               </thead>
