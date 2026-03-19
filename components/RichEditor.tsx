@@ -282,7 +282,7 @@ ${rawText}`,
   const divider = <div className="w-px h-5 bg-white/10 mx-0.5 self-center" />;
 
   return (
-    <div className="rounded-xl overflow-visible" style={{ border: '1px solid rgba(139,92,246,0.3)' }}>
+    <div className="rounded-xl overflow-visible" style={{ border: '1px solid rgba(139,92,246,0.3)', background: '#111118' }}>
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 p-2 border-b"
         style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(139,92,246,0.2)' }}>
@@ -432,13 +432,15 @@ ${rawText}`,
         onMouseUp={updateActiveFormats}
         onClick={() => { setShowColorPicker(false); setShowEmoji(false); setShowFontSize(false); }}
         data-placeholder={placeholder}
-        className="outline-none text-gray-200 leading-relaxed"
+        className="outline-none leading-relaxed"
         style={{
           minHeight: `${minHeight}px`,
           padding: '16px',
           background: '#111118',
+          color: '#e5e7eb',
           fontSize: '15px',
           lineHeight: '1.7',
+          caretColor: '#a78bfa',
         }}
       />
 
@@ -455,6 +457,7 @@ ${rawText}`,
       </div>
 
       <style>{`
+        [contenteditable] { background: #111118 !important; color: #e5e7eb !important; }
         [contenteditable]:empty:before {
           content: attr(data-placeholder);
           color: #4b5563;
@@ -463,9 +466,9 @@ ${rawText}`,
         [contenteditable] h1 { font-size: 2em; font-weight: 800; color: #fff; margin: 0.5em 0; }
         [contenteditable] h2 { font-size: 1.5em; font-weight: 700; color: #fff; margin: 0.5em 0; }
         [contenteditable] h3 { font-size: 1.25em; font-weight: 600; color: #e5e7eb; margin: 0.4em 0; }
-        [contenteditable] p { margin: 0.3em 0; }
-        [contenteditable] ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-        [contenteditable] ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+        [contenteditable] p { margin: 0.3em 0; color: #e5e7eb; }
+        [contenteditable] ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; color: #e5e7eb; }
+        [contenteditable] ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; color: #e5e7eb; }
         [contenteditable] li { margin: 0.2em 0; }
         [contenteditable] a { color: #a78bfa; text-decoration: underline; }
         [contenteditable] hr { border: none; border-top: 1px solid rgba(139,92,246,0.4); margin: 1em 0; }
