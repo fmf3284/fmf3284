@@ -20,6 +20,8 @@ interface Deal {
   createdAt: string;
 }
 
+const SUPER_ADMIN_EMAIL = 'moh.alneama@yahoo.com';
+
 const categories = ['Gym', 'Yoga', 'Pilates', 'CrossFit', 'Sports Club', 'Personal Trainer', 'Dance', 'Martial Arts', 'Boxing', 'Kickboxing', 'Swimming', 'Cycling', 'Barre', 'Climbing', 'Tennis', 'Pickleball', 'Weightlifting', 'Gymnastics', 'Rowing', 'Running', 'Stretching', 'Sauna & Recovery', 'Wellness', 'Rehabilitation'];
 const emojis = ['🎁', '💪', '🧘', '🏋️', '🤸', '⚽', '🎯', '🏃', '🚴', '🥇'];
 
@@ -29,7 +31,6 @@ export default function AdminDealsPage() {
     const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [form, setForm] = useState({
     title: '',
@@ -50,14 +51,8 @@ export default function AdminDealsPage() {
     try {
       const sessionRes = await fetch('/api/auth/session');
       const session = await sessionRes.json();
-      
-      if (!session.authenticated || session.user?.role !== 'admin') {
-        router.push('/login');
-        return;
-      }
-      const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
-      setIsSuperAdmin(session.user?.email?.toLowerCase() === superAdminEmail.toLowerCase());
-      
+      if (!session.authenticated) { router.push('/login'); return; }
+      if (session.user?.role !== 'super_admin') { router.push('/admin'); return; }
       await loadDeals();
     } catch {
       router.push('/login');
@@ -203,14 +198,12 @@ export default function AdminDealsPage() {
               ← Back to Dashboard
             </Link>
           </div>
-          {isSuperAdmin && (
-            <button
-              onClick={openCreateModal}
-              className="px-6 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg font-semibold transition-all"
-            >
-              + New Deal
-            </button>
-          )}
+          <button
+            onClick={openCreateModal}
+            className="px-6 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg font-semibold transition-all"
+          >
+            + New Deal
+          </button>
         </div>
 
         {/* Stats */}
@@ -244,14 +237,12 @@ export default function AdminDealsPage() {
               <div className="text-6xl mb-4">🎁</div>
               <h3 className="text-xl font-bold text-white mb-2">No Deals Yet</h3>
               <p className="text-gray-400 mb-4">Create your first deal to attract more customers!</p>
-              {isSuperAdmin && (
-                <button
-                  onClick={openCreateModal}
-                  className="px-6 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
-                >
-                  Create First Deal
-                </button>
-              )}
+              <button
+                onClick={openCreateModal}
+                className="px-6 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg"
+              >
+                Create First Deal
+              </button>
             </div>
           ) : (
             <table className="w-full">
@@ -306,7 +297,7 @@ export default function AdminDealsPage() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex gap-2">
-                        {isSuperAdmin && <button
+                        <button
                           onClick={() => toggleActive(deal)}
                           className={`px-2 py-1 text-xs rounded ${
                             deal.isActive 
@@ -315,8 +306,8 @@ export default function AdminDealsPage() {
                           }`}
                         >
                           {deal.isActive ? '⏸️' : '▶️'}
-                        </button>}
-                        {isSuperAdmin && <button
+                        </button>
+                        <button
                           onClick={() => toggleFeatured(deal)}
                           className={`px-2 py-1 text-xs rounded ${
                             deal.isFeatured 
@@ -325,14 +316,14 @@ export default function AdminDealsPage() {
                           }`}
                         >
                           ⭐
-                        </button>}
-                        {isSuperAdmin && <button
+                        </button>
+                        <button
                           onClick={() => openEditModal(deal)}
                           className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-xs rounded"
                           title="Edit deal"
                         >
                           ✏️
-                        </button>}
+                        </button>
                         {deal.isActive && (
                           <a
                             href="/deals"
@@ -344,13 +335,13 @@ export default function AdminDealsPage() {
                             👁️
                           </a>
                         )}
-                        {isSuperAdmin && <button
+                        <button
                           onClick={() => handleDelete(deal)}
                           className="px-2 py-1 bg-red-600 hover:bg-red-700 text-xs rounded"
                           title="Delete permanently"
                         >
                           🗑️
-                        </button>}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -362,7 +353,7 @@ export default function AdminDealsPage() {
       </div>
 
       {/* Modal */}
-      {showModal && isSuperAdmin && (
+      {showModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1e1e2d] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-white mb-4">
