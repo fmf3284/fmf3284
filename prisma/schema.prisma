@@ -18,38 +18,47 @@ model User {
   phone         String?
   role          String   @default("user") // "user", "admin", "business_owner", "super_admin"
   status        String   @default("pending") // "active", "suspended", "pending"
-  
+
   // Email verification
-  emailVerified Boolean  @default(false)
-  verificationToken String?
+  emailVerified       Boolean   @default(false)
+  verificationToken   String?
   verificationExpires DateTime?
-  
-  // Soft delete - data retained for 90 days
-  deletedAt     DateTime?  // When set, user is "deleted" but data retained
-  deletedBy     String?    // Admin who deleted the user
-  
+
+  // Soft delete
+  deletedAt     DateTime?
+  deletedBy     String?
+
   // Session tracking
   lastLoginAt   DateTime?
   lastActiveAt  DateTime?
   loginCount    Int      @default(0)
   mustChangePassword Boolean @default(false)
 
-  // 2FA
+  // 2FA / OTP
   otpCode       String?
   otpExpires    DateTime?
-  otpPurpose    String?   // "login" or "reset"
+  otpPurpose    String?
+
+  // Login lockout
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  lastFailedLoginAt DateTime?
+  lockNotifiedAt    DateTime?
+
+  // Newsletter
+  newsletterSubscribed Boolean @default(false)
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Extended profile fields
-  age           Int?
-  streetAddress String?
-  city          String?
-  state         String?
-  zipCode       String?
-  favoriteActivities String?  // JSON array as string: ["Gym", "Yoga", "Running"]
-  experienceLevel    String?  // "Beginner", "Intermediate", "Advanced"
+  // Extended profile
+  age                Int?
+  streetAddress      String?
+  city               String?
+  state              String?
+  zipCode            String?
+  favoriteActivities String?
+  experienceLevel    String?
   fitnessGoals       String?
 
   bookmarks     Bookmark[]
@@ -57,6 +66,8 @@ model User {
   activityLogs  ActivityLog[]
 
   @@index([deletedAt])
+  @@index([email])
+  @@index([status])
   @@map("users")
 }
 
