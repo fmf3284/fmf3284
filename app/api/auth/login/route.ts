@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       
       // Log failed attempt
       try {
-        await logActivity({ userId: user.id, action: 'login_failed', details: { reason: 'invalid_password', attempts: failedAttempt.count }, ipAddress, userAgent });
+        await logActivity({ userId: user.id, action: 'login_failed', details: { reason: 'invalid_password', remainingAttempts: failedAttempt.remainingAttempts }, ipAddress, userAgent });
       } catch (e) {
         console.error('Failed to log failed login:', e);
       }
