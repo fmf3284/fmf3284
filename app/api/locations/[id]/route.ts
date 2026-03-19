@@ -7,9 +7,9 @@ import { getRequestUser } from '@/server/auth/session';
  * GET /api/locations/[id]
  * Get a single location by ID
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const location = await LocationsService.getLocationById(id);
 
     if (!location) {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * PATCH /api/locations/[id]
  * Update a location (protected - requires auth)
  */
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     // Check authentication
     const user = await getRequestUser(request);
@@ -55,7 +55,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     //   return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     // }
 
-    const { id } = await params;
+    const { id } = await context.params;
     const body = await request.json();
 
     // Validate with Zod schema
@@ -107,7 +107,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
  * DELETE /api/locations/[id]
  * Delete a location (protected - requires auth)
  */
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     // Check authentication
     const user = await getRequestUser(request);
@@ -120,7 +120,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     //   return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     // }
 
-    const { id } = await params;
+    const { id } = await context.params;
 
     // Check if location exists
     const existingLocation = await LocationsService.getLocationById(id);
