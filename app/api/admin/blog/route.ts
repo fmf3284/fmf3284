@@ -42,11 +42,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Title and content are required' }, { status: 400 });
     }
 
-    // Generate slug from title
-    const slug = title
+    // Generate unique slug — check DB to avoid conflicts
+    const baseSlug = title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '') + '-' + Date.now().toString(36);
+      .replace(/(^-|-$)/g, '');
+
+    let slug = baseSlug + '-' + Date.now().toString(36);
+    // Ensure uniqueness
+    const existing = await prisma.blogPost.findFirst({ where: { slug } });
+    if (existing) {
+      slug = baseSlug + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+    }
 
     const post = await prisma.blogPost.create({
       data: {
