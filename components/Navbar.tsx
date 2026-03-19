@@ -62,7 +62,7 @@ function Navbar() {
         if (data.authenticated && data.user) {
           setIsLoggedIn(true);
           setUserName(data.user.name);
-          setIsAdmin(data.user.role === 'admin');
+          setIsAdmin(data.user.role === 'admin' || data.user.role === 'super_admin');
         } else {
           setIsLoggedIn(false);
           setUserName('');
