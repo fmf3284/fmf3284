@@ -8,10 +8,10 @@ import { getRequestUser } from '@/server/auth/session';
  */
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: reviewId } = await context.params;
+    const { id: reviewId } = await params;
     
     // Check authentication and admin role
     const user = await getRequestUser(request);
@@ -19,7 +19,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    if (user.role !== 'admin') {
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -51,10 +51,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: reviewId } = await context.params;
+    const { id: reviewId } = await params;
     
     // Check authentication and admin role
     const user = await getRequestUser(request);
@@ -62,7 +62,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    if (user.role !== 'admin') {
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
