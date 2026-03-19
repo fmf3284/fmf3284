@@ -59,7 +59,7 @@ export default function AdminUsers() {
         return;
       }
       
-      if (session.user?.role !== 'admin') {
+      if (session.user?.role !== 'admin' && session.user?.role !== 'super_admin') {
         setError('Access denied. Admin privileges required.');
         setLoading(false);
         return;
@@ -312,7 +312,7 @@ export default function AdminUsers() {
     }
   };
 
-  const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || '';
+  const SUPER_ADMIN_EMAIL = 'moh.alneama@yahoo.com';
 
   const handleDelete = async (userId: string, userName: string, userEmail: string) => {
     if (userId === currentUserId) {
