@@ -127,16 +127,17 @@ export default function AdminUsers() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const handleRoleChange = async (userId: string, newRole: string, currentRole: string) => {
     if (userId === currentUserId) {
       toast.error("You cannot change your own role!");
       return;
     }
 
-    // Only Super Admin can promote users to admin
     const isSuperAdmin = currentUserEmail?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-    if (newRole === 'admin' && !isSuperAdmin) {
-      toast.error("🔒 Only Super Admin can promote users to Admin role.");
+
+    // Only Super Admin can promote to admin OR demote an existing admin
+    if ((newRole === 'admin' || currentRole === 'admin') && !isSuperAdmin) {
+      toast.error("🔒 Only Super Admin can change the Admin role.");
       return;
     }
     
@@ -535,8 +536,18 @@ export default function AdminUsers() {
                       <td className="px-4 py-4">
                         <select
                           value={user.role}
-                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                          disabled={updating === user.id || user.id === currentUserId}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value, user.role)}
+                          disabled={
+                            updating === user.id || 
+                            user.id === currentUserId ||
+                            // Only Super Admin can change role of/to admin
+                            (user.role === 'admin' && currentUserEmail?.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase())
+                          }
+                          title={
+                            user.role === 'admin' && currentUserEmail?.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase()
+                              ? '🔒 Only Super Admin can change Admin roles'
+                              : undefined
+                          }
                           className={`bg-gray-700 text-white px-2 py-1 rounded text-sm border border-gray-600 focus:outline-none focus:border-violet-500 ${
                             updating === user.id || user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
