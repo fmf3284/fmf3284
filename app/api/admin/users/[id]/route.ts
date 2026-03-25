@@ -277,8 +277,9 @@ export async function PATCH(
     if (role) {
       if (currentUser.id === userId) return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 });
       if (!['user', 'admin', 'business_owner'].includes(role)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
-      if (role === 'admin' && !isCurrentUserSuperAdmin(currentUser)) {
-        return NextResponse.json({ error: '🔒 Only Super Admin can promote users to Admin.', protected: true }, { status: 403 });
+      // Only Super Admin can promote to admin OR demote an existing admin
+      if ((role === 'admin' || targetUser.role === 'admin') && !isCurrentUserSuperAdmin(currentUser)) {
+        return NextResponse.json({ error: '🔒 Only Super Admin can change the Admin role.', protected: true }, { status: 403 });
       }
       const updatedUser = await prisma.user.update({ where: { id: userId }, data: { role }, select: { id: true, email: true, name: true, role: true } });
       await logActivity({ userId, action: 'role_changed', details: { newRole: role, changedBy: currentUser.email }, ipAddress: request.headers.get('x-forwarded-for'), userAgent: request.headers.get('user-agent') });
